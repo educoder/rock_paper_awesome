@@ -131,7 +131,7 @@ void in(char c) {
       tie();
       break;
     case PROT_NEW_GAME:
-      tie();
+      newGame();
       break;
   }
 }

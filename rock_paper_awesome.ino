@@ -1,12 +1,22 @@
 #include <stdio.h>
+#include "pitches.h"
 
 #define SERIAL_BAUDRATE 9600
 #define MILLISECONDS_PER_FRAME 30
+
+// notes in the melody (for winning lab song):
+int melody[] = {
+  NOTE_C4, NOTE_G3,NOTE_G3, NOTE_A3, NOTE_G3,0, NOTE_B3, NOTE_C4};
+  
+// note durations: 4 = quarter note, 8 = eighth note, etc.:
+int noteDurations[] = {
+  4, 8, 8, 4,4,4,4,4 };
 
 // the pins that control the brightness of RED, GREEN, and BLUE LEDs respectively
 #define R 9
 #define G 10
 #define B 11
+#define Y 12
 
 // pins that receive input for ROCK, PAPER, and SCISSOR
 #define PIN_ROCK 3
@@ -64,6 +74,7 @@ void setup() {
   pinMode(R, OUTPUT);
   pinMode(G, OUTPUT);
   pinMode(B, OUTPUT);
+  pinMode(Y, OUTPUT);
   digitalWrite(PIN_ROCK, LOW);
   digitalWrite(PIN_PAPER, LOW);
   digitalWrite(PIN_SCISSORS, LOW);
@@ -131,7 +142,7 @@ void in(char c) {
       tie();
       break;
     case PROT_NEW_GAME:
-      tie();
+      newGame();
       break;
   }
 }
@@ -168,6 +179,7 @@ void youChose(char choice) {
 // called when they chose rock, paper, or scissors
 void theyChose(char choice) {
   theirChoice = choice;
+  blink(Y, 5, 200);
 }
 
 // called when waiting for you to make a choice
@@ -181,7 +193,22 @@ void waitingForThem() {
 }
 
 void youWin() {
-  blink(G, 5, 1000);
+  //blink(G, 5, 1000);
+  for (int thisNote = 0; thisNote < 8; thisNote++) {
+
+    // to calculate the note duration, take one second 
+    // divided by the note type.
+    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+    int noteDuration = 1000/noteDurations[thisNote];
+    tone(8, melody[thisNote],noteDuration);
+
+    // to distinguish the notes, set a minimum time between them.
+    // the note's duration + 30% seems to work well:
+    int pauseBetweenNotes = noteDuration * 1.30;
+    delay(pauseBetweenNotes);
+    // stop the tone playing:
+    noTone(8);
+  }
 }
 
 void youLose() {
@@ -236,5 +263,4 @@ void blink(byte pin, byte times, int delayTime) {
     delay(delayTime / 2);
   }
 }
-
 

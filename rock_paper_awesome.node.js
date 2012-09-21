@@ -182,7 +182,12 @@ Groupchat.prototype.connect = function () {
           stanza.attrs.from != MY_JID_IN_ROOM) {
         var msg = stanza.getChildText('body');
         console.log("XMPP: Got message "+msg, stanza.attrs.from);
-        var sev = JSON.parse(msg);
+        try {
+          var sev = JSON.parse(msg);
+        } catch (err) {
+          console.warn("Could not parse event mesage! ("+msg+")");
+          return;
+        }
         chat.emit('event', sev);
       }
     });

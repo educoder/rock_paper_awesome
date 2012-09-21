@@ -61,7 +61,7 @@ RPA.prototype.readyToStartNewGame = function () {
   }
 };
 
-RPA.prototype.yourChoice = function (choice) {
+RPA.prototype.youChoose = function (choice) {
   var c;
   switch (choice) {
   case 'r':
@@ -137,13 +137,13 @@ sp.on("data", function (data) {
     });
     chat.connect();
     break;
-  case 'n':
+  case 'n': 
     rpa.readyToStartNewGame();
     break;
   case 'r':
   case 'p':
   case 's':
-    rpa.yourChoice(cmd);
+    rpa.youChoose(cmd);
     break;
   default:
     console.warn("Unknown message from Arduino: "+data);

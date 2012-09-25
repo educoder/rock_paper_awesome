@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "pitches.h"
+#include <Servo.h> 
 
 #define SERIAL_BAUDRATE 9600
 #define MILLISECONDS_PER_FRAME 30
@@ -22,6 +23,13 @@ int noteDurations[] = {
 #define PIN_ROCK 3
 #define PIN_PAPER 4
 #define PIN_SCISSORS 5
+
+// create servo object to control a servo 
+Servo myservo;
+int servoPos = 0;    // variable to store the servo position 
+
+// pin for new game button
+#define PIN_READY_NEW_GAME 2
 
 // PROTOCOL
 // >> incoming messages from node over serialport
@@ -78,9 +86,12 @@ void setup() {
   digitalWrite(PIN_ROCK, LOW);
   digitalWrite(PIN_PAPER, LOW);
   digitalWrite(PIN_SCISSORS, LOW);
+  digitalWrite(PIN_READY_NEW_GAME, LOW);
   pinMode(PIN_ROCK, INPUT);
   pinMode(PIN_PAPER, INPUT);
   pinMode(PIN_SCISSORS, INPUT);
+  pinMode(PIN_READY_NEW_GAME, INPUT);
+  myservo.attach(13);  // attaches the servo on pin 13 to the servo object 
   setRGB(0,0,0);
   Serial.begin(SERIAL_BAUDRATE);
   Serial.print(PROT_ARDUINO_READY); // tell the daemon that we're ready
@@ -106,6 +117,10 @@ void loop() {
       readyForNewGame();
     }
   }
+  
+  if (digitalRead(PIN_READY_NEW_GAME) == HIGH)
+    readyForNewGame();
+    
   
   if (Serial.available() > 0) {
     in(Serial.read());
@@ -144,6 +159,7 @@ void in(char c) {
     case PROT_NEW_GAME:
       newGame();
       break;
+
   }
 }
 
@@ -194,6 +210,12 @@ void waitingForThem() {
 
 void youWin() {
   //blink(G, 5, 1000);
+  myservo.write(59);
+  myservo.write(119);
+  myservo.write(59);
+  myservo.write(119);
+  myservo.write(179);
+  myservo.write(79);
   for (int thisNote = 0; thisNote < 8; thisNote++) {
 
     // to calculate the note duration, take one second 
@@ -213,21 +235,34 @@ void youWin() {
 
 void youLose() {
   state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION;
+  myservo.write(59);
+  delay(20);
+  myservo.write(119);
+  myservo.write(59);
+  myservo.write(119);
+  myservo.write(179);
   blink(R, 5, 1000);
 }
 
 void tie() {
   state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION;
+  myservo.write(59);
+  myservo.write(119);
+  myservo.write(59);
+  myservo.write(119);
+  myservo.write(89);
   blink(B, 5, 1000);
 }
 
 void readyForNewGame() {
   Serial.print(PROT_READY_FOR_NEW_GAME);
+  myservo.write(89);
 }
 
 void newGame() {
   theirChoice = NULL;
   yourChoice = NULL;
+  myservo.write(0);
   state = STATE_WAITING_FOR_EITHER_CHOICE;
   
   // TODO: do some blinky stuff here

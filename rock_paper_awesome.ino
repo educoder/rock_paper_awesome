@@ -1,17 +1,55 @@
 #include <stdio.h>
+#include "pitches.h"
+#include <Servo.h> 
 
 #define SERIAL_BAUDRATE 9600
 #define MILLISECONDS_PER_FRAME 30
+
+// ****** Sounds for winning a round ******
+// notes for the win melody (for winning lab song):
+int melodyWin[] = {
+  NOTE_G4, NOTE_G4, NOTE_B4, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_E5, NOTE_D5, NOTE_CS5, NOTE_D5, NOTE_G4, 
+NOTE_G4, NOTE_B4, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_E5, NOTE_D5, NOTE_B4, NOTE_G4};
+  
+// note durations: 4 = quarter note, 8 = eighth note, etc.:
+int noteDurationsWin[] = {
+  8, 4, 4, 2, 8, 8, 8, 8, 8, 2, 8, 4, 4, 2, 8, 8, 8, 8, 8, 2};
+// end of winning sounds
+
+// ****** Sounds for losing a round ******
+// notes for the losing melody:
+int melodyLose[] = {
+NOTE_C8, NOTE_B7, NOTE_AS7, NOTE_A7, NOTE_C8, NOTE_GS7, NOTE_GS7, NOTE_G7, NOTE_FS7, NOTE_F7, NOTE_E7, NOTE_DS7, NOTE_D7, NOTE_CS7, NOTE_C7, NOTE_B6, NOTE_AS6, NOTE_A6, NOTE_GS6, NOTE_G6, NOTE_FS6, NOTE_F6, NOTE_E6, NOTE_DS6, NOTE_D6, NOTE_CS6, NOTE_C6, NOTE_B5, NOTE_AS5, NOTE_A5, NOTE_GS5, NOTE_G5, NOTE_FS5, NOTE_F5, NOTE_E5, NOTE_DS5, NOTE_D5, NOTE_CS5, NOTE_C5, NOTE_B4, NOTE_AS4, NOTE_A4, NOTE_GS4, NOTE_G4, NOTE_FS4, NOTE_F4, NOTE_E4, NOTE_DS4, NOTE_D4, NOTE_CS4, NOTE_C4, NOTE_B3, NOTE_AS3, NOTE_A3, 
+NOTE_GS3, NOTE_G3, NOTE_FS3, NOTE_F3, NOTE_E3, NOTE_DS3   
+};
+
+// note durations: 16 = 32nd note, 8 = sixteenth note, 4 = quarter note, 2 = half note, 1 = whole note etc.:
+int noteDurationsLose[] = {
+  32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 
+32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 4, 4, 1};
+
+// end of losing sounds
 
 // the pins that control the brightness of RED, GREEN, and BLUE LEDs respectively
 #define R 9
 #define G 10
 #define B 11
+#define Y 12
 
 // pins that receive input for ROCK, PAPER, and SCISSOR
 #define PIN_ROCK 3
 #define PIN_PAPER 4
 #define PIN_SCISSORS 5
+
+// create servo object to control a servo 
+Servo myservo;
+int servoPos = 0;    // variable to store the servo position
+
+// defining the seonsor pin to analog pin 0
+int sensorPin = 0;  
+
+// pin for new game button
+#define PIN_READY_NEW_GAME 2
 
 // PROTOCOL
 // >> incoming messages from node over serialport
@@ -65,23 +103,59 @@ void setup() {
   pinMode(R, OUTPUT);
   pinMode(G, OUTPUT);
   pinMode(B, OUTPUT);
+  pinMode(Y, OUTPUT);
   digitalWrite(PIN_ROCK, LOW);
   digitalWrite(PIN_PAPER, LOW);
   digitalWrite(PIN_SCISSORS, LOW);
+  digitalWrite(PIN_READY_NEW_GAME, LOW);
   pinMode(PIN_ROCK, INPUT);
   pinMode(PIN_PAPER, INPUT);
   pinMode(PIN_SCISSORS, INPUT);
+  pinMode(PIN_READY_NEW_GAME, INPUT);
+  myservo.attach(13);  // attaches the servo on pin 13 to the servo object 
+  myservo.write(7);
   setRGB(0,0,0);
   Serial.begin(SERIAL_BAUDRATE);
   Serial.print(PROT_ARDUINO_READY); // tell the daemon that we're ready
 }
 
+int readSensorValue() {
+ int val = analogRead(sensorPin); 
+ Serial.println(val);
+ return val;
+}
+
 void loop() {
   if (state == STATE_WAITING_FOR_EITHER_CHOICE || state == STATE_WAITING_FOR_YOUR_CHOICE) {
-    think();
-  } else if (state == STATE_WAITING_FOR_GAME_OVER_CONFIRMATION) {
-    readyForNewGame();
+    if (readSensorValue() > 300){
+        for (int sensorCheck = 0; sensorCheck < 5 && (readSensorValue()  > 300) ; sensorCheck++){
+          Serial.println(sensorCheck);
+          if (sensorCheck == 4){
+            youChose(PROT_YOU_CHOSE_ROCK);
+            }
+           delay(1000);         
+          }
+    } 
+    else if (digitalRead(PIN_PAPER) == HIGH)
+      youChose(PROT_YOU_CHOSE_PAPER);
+    else if (digitalRead(PIN_SCISSORS) == HIGH)
+      youChose(PROT_YOU_CHOSE_SCISSORS);
+  } else if (state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION) {
+    if (digitalRead(PIN_ROCK) == LOW && yourChoice == PROT_YOU_CHOSE_ROCK
+        || digitalRead(PIN_PAPER) == LOW && yourChoice == PROT_YOU_CHOSE_PAPER
+        || digitalRead(PIN_SCISSORS) == LOW && yourChoice == PROT_YOU_CHOSE_SCISSORS) {
+      choiceWasReset = true;
+    }
+
+    if (choiceWasReset && (digitalRead(PIN_ROCK) == HIGH || digitalRead(PIN_PAPER) == HIGH || digitalRead(PIN_SCISSORS))) {
+      choiceWasReset = false;
+      readyForNewGame();
+    }
   }
+  
+  if (digitalRead(PIN_READY_NEW_GAME) == HIGH)
+    readyForNewGame();
+    
   
   if (Serial.available() > 0) {
     in(Serial.read());
@@ -120,6 +194,7 @@ void in(char c) {
     case PROT_NEW_GAME:
       newGame();
       break;
+
   }
 }
 
@@ -156,6 +231,7 @@ void youChose(char choice) {
 // called when they chose rock, paper, or scissors
 void theyChose(char choice) {
   theirChoice = choice;
+  blink(Y, 5, 200);
 }
 
 void think() {
@@ -174,6 +250,17 @@ void think() {
 
 // called when waiting for you to make a choice
 void waitingForYou() {
+  myservo.write(45);
+  for(servoPos = 45; servoPos < 135; servoPos += 1)  // goes from 0 degrees to 180 degrees 
+  {                                  // in steps of 1 degree 
+    myservo.write(servoPos);              // tell servo to go to position in variable 'pos' 
+    delay(15);                       // waits 15ms for the servo to reach the position 
+  } 
+  for(servoPos = 135; servoPos>=45; servoPos-=1)     // goes from 180 degrees to 0 degrees 
+  {                                
+    myservo.write(servoPos);              // tell servo to go to position in variable 'pos' 
+    delay(15);                       // waits 15ms for the servo to reach the position 
+  } 
   blink(G, 5, 200);
 }
 
@@ -183,27 +270,84 @@ void waitingForThem() {
 }
 
 void youWin() {
-  blink(G, 5, 1000);
+  //blink(G, 5, 1000);
+  myservo.write(59);
+  delay(500);
+  myservo.write(119);
+  delay(500);
+  myservo.write(59);
+  delay(500);
+  myservo.write(119);
+  delay(500);
+  myservo.write(79);
+  for (int thisNote = 0; thisNote < 20; thisNote++) {
+
+    // to calculate the note duration, take one second 
+    // divided by the note type.
+    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+    int noteDurationWin = 1000/noteDurationsWin[thisNote];
+    tone(8, melodyWin[thisNote],noteDurationWin);
+
+    // to distinguish the notes, set a minimum time between them.
+    // the note's duration + 30% seems to work well:
+    int pauseBetweenNotes = noteDurationWin * 1.30;
+    delay(pauseBetweenNotes);
+    // stop the tone playing:
+    noTone(8);
+  }
 }
 
 void youLose() {
   state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION;
-  blink(R, 5, 1000);
+  myservo.write(59);
+  delay(500);
+  myservo.write(119);
+  delay(500);
+  myservo.write(59);
+  delay(500);
+  myservo.write(119);
+  delay(500);
+  myservo.write(155);
+  for (int thisNote = 0; thisNote < 60; thisNote++) {
+  
+    // to calculate the note duration, take one second 
+    // divided by the note type.
+    //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+    int noteDurationLose = 1000/noteDurationsLose[thisNote];
+    tone(8, melodyLose[thisNote],noteDurationLose);
+  
+    // to distinguish the notes, set a minimum time between them.
+    // the note's duration + 30% seems to work well:
+    int pauseBetweenNotes = noteDurationLose * 1.30;
+    delay(pauseBetweenNotes);
+    // stop the tone playing:
+    noTone(8);
+  }
 }
 
 void tie() {
   state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION;
+  myservo.write(59);
+  delay(500);
+  myservo.write(119);
+  delay(500);
+  myservo.write(59);
+  delay(500);
+  myservo.write(119);
+  delay(500);
+  myservo.write(44);
   blink(B, 5, 1000);
 }
 
 void readyForNewGame() {
   Serial.print(PROT_READY_FOR_NEW_GAME);
+  myservo.write(89);
 }
 
 void newGame() {
   theirChoice = NULL;
   yourChoice = NULL;
-
+  myservo.write(7);
   state = STATE_WAITING_FOR_EITHER_CHOICE;
 
   blink(G, 5, 100);
@@ -240,5 +384,4 @@ void blink(byte pin, byte times, int delayTime) {
     delay(delayTime / 2);
   }
 }
-
 

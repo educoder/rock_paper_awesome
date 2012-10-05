@@ -11,10 +11,11 @@ var sp;
 var chat;
 
 var HOST = "badger.encorelab.org";
-var NICK = "toronto";
+var USER = "toronto";
+var NICK = process.argv[2] || USER;
 var PASSWORD = "toronto";
 
-var MY_JID = NICK + "@" + HOST;
+var MY_JID = USER + "@" + HOST;
 var ROOM_JID = "rock-paper-awesome@conference." + HOST;
 var MY_JID_IN_ROOM = ROOM_JID + "/" + NICK;
 
@@ -213,7 +214,7 @@ Groupchat.prototype.sendEvent = function (type, payload, meta) {
     eventType: type,
     payload: payload,
     timestamp: meta.timestamp || new Date(),
-    origin: meta.origin || NICK
+    origin: meta.origin || USER
   };
 
   this.sendText(JSON.stringify(sev));

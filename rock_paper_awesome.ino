@@ -35,10 +35,11 @@
 
 // states
 #define STATE_OFFLINE 0
-#define STATE_WAITING_FOR_EITHER_CHOICE 1
-#define STATE_WAITING_FOR_YOUR_CHOICE 2
-#define STATE_WAITING_FOR_THEIR_CHOICE 3
-#define STATE_WAITING_FOR_GAME_OVER_CONFIRMATION 4
+#define STATE_WAITING_FOR_READY 1
+#define STATE_WAITING_FOR_EITHER_CHOICE 2
+#define STATE_WAITING_FOR_YOUR_CHOICE 3
+#define STATE_WAITING_FOR_THEIR_CHOICE 4
+#define STATE_WAITING_FOR_GAME_OVER_CONFIRMATION 5
 
 // LED modes
 #define LED_MODE_STEADY 0
@@ -77,23 +78,9 @@ void setup() {
 
 void loop() {
   if (state == STATE_WAITING_FOR_EITHER_CHOICE || state == STATE_WAITING_FOR_YOUR_CHOICE) {
-    if (digitalRead(PIN_ROCK) == HIGH)
-      youChose(PROT_YOU_CHOSE_ROCK);
-    else if (digitalRead(PIN_PAPER) == HIGH)
-      youChose(PROT_YOU_CHOSE_PAPER);
-    else if (digitalRead(PIN_SCISSORS) == HIGH)
-      youChose(PROT_YOU_CHOSE_SCISSORS);
-  } else if (state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION) {
-    if (digitalRead(PIN_ROCK) == LOW && yourChoice == PROT_YOU_CHOSE_ROCK
-        || digitalRead(PIN_PAPER) == LOW && yourChoice == PROT_YOU_CHOSE_PAPER
-        || digitalRead(PIN_SCISSORS) == LOW && yourChoice == PROT_YOU_CHOSE_SCISSORS) {
-      choiceWasReset = true;
-    }
-
-    if (choiceWasReset && (digitalRead(PIN_ROCK) == HIGH || digitalRead(PIN_PAPER) == HIGH || digitalRead(PIN_SCISSORS))) {
-      choiceWasReset = false;
-      readyForNewGame();
-    }
+    think();
+  } else if (state == STATE_WAITING_FOR_GAME_OVER_CONFIRMATION) {
+    readyForNewGame();
   }
   
   if (Serial.available() > 0) {
@@ -138,7 +125,7 @@ void in(char c) {
 
 // called when online
 void online() {
-  state = STATE_WAITING_FOR_EITHER_CHOICE;
+  state = STATE_WAITING_FOR_READY;
   blink(G, 3, 1000);
 }
 
@@ -162,12 +149,27 @@ void youChose(char choice) {
       setLED(B, 255);
       break;
   }
+  state = STATE_WAITING_FOR_THEIR_CHOICE;
   Serial.print(choice);
 }
 
 // called when they chose rock, paper, or scissors
 void theyChose(char choice) {
   theirChoice = choice;
+}
+
+void think() {
+  switch(random(1,3)) {
+  case 1:
+    youChose(PROT_YOU_CHOSE_ROCK);
+    break;
+  case 2:
+    youChose(PROT_YOU_CHOSE_PAPER);
+    break;
+  case 3:
+    youChose(PROT_YOU_CHOSE_SCISSORS);
+    break;
+  }
 }
 
 // called when waiting for you to make a choice
@@ -201,8 +203,10 @@ void readyForNewGame() {
 void newGame() {
   theirChoice = NULL;
   yourChoice = NULL;
+
   state = STATE_WAITING_FOR_EITHER_CHOICE;
-  
+
+  blink(G, 5, 100);
   // TODO: do some blinky stuff here
 
   //delay(2000); // wait 2 seconds before listening for other signals... otherwise we might catch a button held down too long

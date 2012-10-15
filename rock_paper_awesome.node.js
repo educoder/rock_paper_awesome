@@ -218,7 +218,7 @@ function arduinoInvalidTransition (eventName) {
 }
 
 function writeToArduino (data) {
-  console.log(color.blackBright(">> [TO ARDUINO]"), util.inspect(cmd, true, null, true));
+  console.log(color.blackBright(">> [TO ARDUINO]"), util.inspect(data, true, null, true));
   sp.write(data);
   sp.flush(); // might not be necessary?
 }

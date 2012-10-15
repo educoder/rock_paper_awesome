@@ -206,12 +206,12 @@ var writeToSerialport;
 if (os.arch() == 'arm') {
   // FIXME: hacky way to write to serialport on Raspberry Pi....
   //        sp.write() doesn't seem to work for some reason :(
-  writeToSerialport = writeToSerialport(data) {
+  writeToSerialport = function (data) {
     exec("echo '"+data+"' > "+SERIALPORT);
   }
 } else {
-  writeToSerialport = writeToSerialport(data) {
-    sp.write(cmd);
+  writeToSerialport = function (data) {
+    sp.write(data);
   }
 }
 

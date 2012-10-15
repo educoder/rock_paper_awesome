@@ -21,6 +21,7 @@ void RPA::connect() {
 
 void RPA::connected() {
     switch (state) {
+        case RPA::States::OFFLINE:
         case RPA::States::CONNECTING:
             change_state_to(RPA::States::ONLINE);
             if (*on_connected) on_connected();

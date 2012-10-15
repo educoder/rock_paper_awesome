@@ -38,6 +38,8 @@ class RockPaperAwesome
     state :OFFLINE do
       on :connect, :to => :CONNECTING, 
         :action => proc{|rpa| output("~") }
+      on :connected, :to => :ONLINE,
+        :if => proc{|input| input == "@"}
     end
 
     state :CONNECTING do

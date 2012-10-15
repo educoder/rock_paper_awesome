@@ -217,14 +217,15 @@ function arduinoInvalidTransition (eventName) {
   console.error(color.redBright("!!! Arduino says that an invalid event was triggered:"), util.inspect(eventName, true, null, true));
 }
 
+var writeToSerialport;
 if (os.arch() == 'arm') {
   // FIXME: hacky way to write to serialport on Raspberry Pi....
   //        sp.write() doesn't seem to work for some reason :(
-  function writeToSerialport(data) {
+  writeToSerialport = writeToSerialport(data) {
     exec("echo '"+data+"' > "+SERIALPORT);
   }
 } else {
-  function writeToSerialport(data) {
+  writeToSerialport = writeToSerialport(data) {
     sp.write(cmd);
   }
 }

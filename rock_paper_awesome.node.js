@@ -2,8 +2,8 @@
 
 "use strict";
 
-//var SERIALPORT = '/dev/cu.usbmodemfd131';
-var SERIALPORT = '/dev/tty.usbserial-A6006klc';
+var SERIALPORT = '/dev/tty.usbmodemfa141';
+//var SERIALPORT = '/dev/tty.usbserial-A6006klc';
 
 // FIXME: this is in bad need of a rewrite
 

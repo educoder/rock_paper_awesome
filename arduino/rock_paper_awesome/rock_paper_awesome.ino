@@ -155,7 +155,7 @@ void randomly_choose_weapon() {
 byte convertRGBval(byte val) {
   // due to the way my LEDs are wired, my pin values are inverted, so for me 0 == maximum, 255 == minimum
   // get rid of the "255-" for yours to revert to normal usage
-  return 255-val;
+  return val;
   //return val;
 }
 

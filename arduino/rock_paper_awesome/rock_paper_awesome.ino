@@ -9,26 +9,9 @@
 #define G 10
 #define B 11
 
-// pins that receive input for ROCK, PAPER, and SCISSOR
-#define PIN_ROCK 5
-#define PIN_PAPER 7
-#define PIN_SCISSORS 6
-// pin that receives input from the NEW GAME (READY) button
-#define PIN_READY 3
-
-// wait this many ms before considering that a button has been pressed again
-#define BUTTON_DEBOUNCE_WAIT 50
 
 // instantiate a RockPaperAwesome state machine
 RPA rpa = RPA();
-
-// Button wrappers; uses the Button library
-//  -- see: https://github.com/virgildisgr4ce/Button
-Button rockButton = Button(PIN_ROCK, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBOUNCE_WAIT);
-Button paperButton = Button(PIN_PAPER, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBOUNCE_WAIT);
-Button scissorsButton = Button(PIN_SCISSORS, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBOUNCE_WAIT);
-
-Button readyButton = Button(PIN_READY, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBOUNCE_WAIT);
 
 
 /*******************************************************************/
@@ -84,14 +67,15 @@ void entered_state(RPA::States::STATE state) {
   //blink(B, 1, 200);
   switch (state) {
 
-    case RPA::States::ONLINE:
-      setRGB(0,0,0);
-      setLED(G, 5);
+    case RPA::States::WAITING_FOR_YOUR_READY:
+      rpa.ready();
+      break;
+
+    case RPA::States::WAITING_FOR_YOUR_CHOICE:
+      randomly_choose_weapon();
       break;
 
     case RPA::States::OFFLINE:
-      blink(R, 3, 600);
-      setLED(R, 5);
       break;
 
     // you can add a case for each possible state
@@ -150,24 +134,22 @@ void setup() {
 }
 
 void loop() {
-  if (readyButton.uniquePress())
-    rpa.ready();
-  
-  if (rockButton.uniquePress())
-    rpa.you_choose(RPA::ROCK);
-  
-  if (paperButton.uniquePress())
-    rpa.you_choose(RPA::PAPER);
-
-  if (scissorsButton.uniquePress())
-    rpa.you_choose(RPA::SCISSORS);
-
   rpa.check_input_from_serial();
 }
 
 /*******************************************************************/
 /** HELPER FUNCTIONS ***********************************************/
 /*******************************************************************/
+
+void randomly_choose_weapon() {
+  int choice = random(1,4);
+  if (choice == 1)
+      rpa.you_choose(RPA::ROCK);
+  else if (choice == 2)
+      rpa.you_choose(RPA::PAPER);
+  else if (choice == 3)
+      rpa.you_choose(RPA::SCISSORS);
+}
 
 // does any necessary transformation from a LED value to the value that should be written to the pin (using analogWrite)
 byte convertRGBval(byte val) {

@@ -2,6 +2,8 @@
 
 "use strict";
 
+// FIXME: this is in bad need of a rewrite
+
 var util = require('util');
 var events = require('events');
 var serialport = require('serialport');
@@ -34,31 +36,36 @@ sp = new serialport.SerialPort('/dev/cu.usbmodemfd131');
 function RPA () {
   events.EventEmitter.call(this);
 
-  this.setYourState('OFFLINE');
-  this.setTheirState('OFFLINE');
+  this.yourStateChangedTo('OFFLINE');
+  this.theirStateChangedTo('OFFLINE');
 }
 util.inherits(RPA, events.EventEmitter);
 
-RPA.prototype.setYourState = function (newState) {
-  console.log("MY STATE:", util.inspect(newState, true, null, true));
+RPA.prototype.yourStateChangedTo = function (newState) {
+  console.log("*----------------------[ MY Node's STATE:", util.inspect(newState, true, null, true));
   this.yourState = newState;
 };
 
-RPA.prototype.setTheirState = function (newState) {
-  console.log("THEIR STATE:", util.inspect(newState, true, null, true));
+RPA.prototype.theirStateChangedTo = function (newState) {
+  console.log("*--------------------------------------------------------[ THEIR Node's STATE:", util.inspect(newState, true, null, true));
   this.theirState = newState;
 };
 
 RPA.prototype.readyToStartNewGame = function () {
   var rpa = this;
-  if (this.theirState == 'ONLINE') {
-    chat.sendEvent('ready');
-    rpa.setYourState('READY');
-  } else {
+  this.yourChoice = null;
+  if (this.theirState === 'OFFLINE') {
+    console.log("Waiting for other player to come online...");
     chat.once('online', function () {
+      console.log("Other player is ONLINE, telling them that we're ready!");
       chat.sendEvent('ready');
-      rpa.setYourState('READY');
     });
+  } else if (this.theirState === 'READY') {
+    console.log("Other player is READY, telling them that we're also ready!");
+    chat.sendEvent('ready');
+  } else {
+    console.log("Other player is ONLINE, telling them that we're ready!");
+    chat.sendEvent('ready');
   }
 };
 
@@ -75,54 +82,31 @@ RPA.prototype.youChoose = function (choice) {
     c = 'Scissors';
     break;
   }
-  chat.sendEvent('choice', {weapon: c});
+  console.log("~~~ You chose ", util.inspect(c, true, null, true));
   this.yourChoice = c;
-  this.setYourState('WAITING_FOR_OPPONENT');
+  if (this.yourState === 'WAITING_FOR_YOUR_CHOICE') {
+    var self = this;
+    this.once('arduino_state_WAITING_FOR_RESULT', function () {
+      self.check();
+    });
+  }
+  chat.sendEvent('choice', {weapon: c});
 };
 
 RPA.prototype.check = function () {
   if (this.yourChoice === this.theirChoice) {
-    this.setYourState('TIED');
-    this.setTheirState('TIED');
     writeToArduino('=');
   } else if (this.yourChoice === "Rock" && this.theirChoice === "Scissors" ||
       this.yourChoice === "Paper" && this.theirChoice === "Rock" ||
       this.yourChoice === "Scissors" && this.theirChoice === "Paper") {
-    this.setYourState('WON');
-    this.setTheirState('LOST');
     writeToArduino('+');
   } else {
-    this.setYourState('LOST');
-    this.setTheirState('WON');
     writeToArduino('-');
   }
 }
 
-var rpa = new RPA();
-
-rpa.on('ready', function (sev) {
-  console.log("@ Other player is ready!");
-  rpa.setTheirState('READY');
-  writeToArduino('N');
-});
-rpa.on('choice', function (sev) {
-  var weapon = sev.payload.weapon;
-  console.log("@ Other player chose ", util.inspect(weapon, true, null, true));
-  this.setTheirState("CHOSEN");
-  this.theirChoice = weapon;
-  if (this.yourState === 'WAITING_FOR_OPPONENT')
-    this.check();
-  else
-    this.setYourState('WAITING_FOR_YOU');
-});
-
-var lastCmd;
-sp.on("data", function (data) {
-  var cmd = data.toString()[0];
-  if (cmd === lastCmd) // cheap way to ignore duplicate input
-    return;
-
-  console.log(">> ", util.inspect(cmd, true, null, true));
+RPA.prototype.processInputFromArduino = function (cmd) {
+  console.log("<< [FROM ARDUINO]", util.inspect(cmd, true, null, true));
   switch (cmd) {
   case '~':
     chat = new Groupchat();
@@ -131,10 +115,9 @@ sp.on("data", function (data) {
     });
     chat.on('online', function () {
       writeToArduino('@');
-      rpa.setYourState('ONLINE');
     });
     chat.on('joined', function () {
-      rpa.setTheirState('ONLINE');
+      rpa.theirStateChangedTo('ONLINE');
     });
     chat.connect();
     break;
@@ -146,14 +129,68 @@ sp.on("data", function (data) {
   case 's':
     rpa.youChoose(cmd);
     break;
+  case '!':
+    console.error("!!! Arduino says that the last event was invaid for the current state!");
+    break;
   default:
-    console.warn("Unknown message from Arduino: "+data);
+    if (cmd.match(/\d/))
+      arduinoStateChange(parseInt(cmd));
+    else
+      console.warn("!!! Unknown message from Arduino: "+cmd.toString());
   }
-  lastCmd = cmd;
+}
+
+var rpa = new RPA();
+
+rpa.on('ready', function (sev) { // remote_ready
+  console.log("~~~ Other player is ready!");
+  rpa.theirStateChangedTo('READY');
+  this.theirChoice = null;
+  writeToArduino('N');
+});
+rpa.on('choice', function (sev) {
+  var weapon = sev.payload.weapon;
+  console.log("~~~ Other player chose ", util.inspect(weapon, true, null, true));
+  this.theirStateChangedTo("CHOSEN");
+  this.theirChoice = weapon;
+  if (this.yourState === 'WAITING_FOR_THEIR_CHOICE') {
+    var self = this;
+    this.once('arduino_state_WAITING_FOR_RESULT', function () {
+      self.check();
+    });
+  }
+  writeToArduino(weapon[0]);
 });
 
+sp.on("data", function (data) {
+  var input = data.toString();
+  for (var i in input) {
+    rpa.processInputFromArduino(input[i]);
+  }
+});
+
+function arduinoStateChange (stateNum) {
+
+  // IMPORTANT: must keep this in sync with what's in RPA.h!
+  var arduinoStates = {
+    0: "OFFLINE",
+    1: "WAITING_FOR_XMPP_CONNECTION",
+    2: "WAITING_FOR_EITHER_READY",
+    3: "WAITING_FOR_THEIR_READY",
+    4: "WAITING_FOR_YOUR_READY",
+    5: "WAITING_FOR_EITHER_CHOICE",
+    6: "WAITING_FOR_THEIR_CHOICE",
+    7: "WAITING_FOR_YOUR_CHOICE",
+    8: "WAITING_FOR_RESULT"
+  };
+
+  console.log("*-[ MY Arduino's STATE: ", util.inspect(arduinoStates[stateNum], true, null, true));
+  rpa.yourStateChangedTo(arduinoStates[stateNum]);
+  rpa.emit("arduino_state_"+arduinoStates[stateNum]);
+}
+
 function writeToArduino (cmd) {
-  console.log("<< ", util.inspect(cmd, true, null, true));
+  console.log(">> [TO ARDUINO]", util.inspect(cmd, true, null, true));
   sp.write(cmd);
 }
 
@@ -214,7 +251,7 @@ Groupchat.prototype.sendEvent = function (type, payload, meta) {
     eventType: type,
     payload: payload,
     timestamp: meta.timestamp || new Date(),
-    origin: meta.origin || USER
+    origin: meta.origin || NICK
   };
 
   this.sendText(JSON.stringify(sev));

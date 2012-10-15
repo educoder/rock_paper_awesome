@@ -8,6 +8,7 @@ var util = require('util');
 var events = require('events');
 var serialport = require('serialport');
 var xmpp = require('node-xmpp');
+var color = require('cli-color');
 
 var sp;
 var chat;
@@ -31,7 +32,9 @@ var MY_JID_IN_ROOM = ROOM_JID + "/" + NICK;
 //   });
 // });
 
-sp = new serialport.SerialPort('/dev/cu.usbmodemfd131');
+sp = new serialport.SerialPort('/dev/cu.usbmodemfd131', {
+  parser: serialport.parsers.readline("\r\n")
+});
 
 function RPA () {
   events.EventEmitter.call(this);
@@ -106,7 +109,7 @@ RPA.prototype.check = function () {
 }
 
 RPA.prototype.processInputFromArduino = function (cmd) {
-  console.log("<< [FROM ARDUINO]", util.inspect(cmd, true, null, true));
+  console.log(color.blackBright("<< [FROM ARDUINO]"), util.inspect(cmd, true, null, true));
   switch (cmd) {
   case '~':
     chat = new Groupchat();
@@ -129,14 +132,15 @@ RPA.prototype.processInputFromArduino = function (cmd) {
   case 's':
     rpa.youChoose(cmd);
     break;
-  case '!':
-    console.error("!!! Arduino says that the last event was invaid for the current state!");
-    break;
   default:
-    if (cmd.match(/\d/))
-      arduinoStateChange(parseInt(cmd));
-    else
-      console.warn("!!! Unknown message from Arduino: "+cmd.toString());
+    var match;
+    if (match = cmd.match(/\[(\d)/)) {
+      arduinoStateChange(parseInt(match[1]));
+    } else if (match = cmd.match(/!(.+)/)) {
+      arduinoInvalidTransition(match[1]);
+    } else {
+      console.warn(color.red("!!! Unknown message from Arduino: "), cmd.toString());
+    }
   }
 }
 
@@ -164,9 +168,7 @@ rpa.on('choice', function (sev) {
 
 sp.on("data", function (data) {
   var input = data.toString();
-  for (var i in input) {
-    rpa.processInputFromArduino(input[i]);
-  }
+  rpa.processInputFromArduino(input);
 });
 
 function arduinoStateChange (stateNum) {
@@ -174,11 +176,11 @@ function arduinoStateChange (stateNum) {
   // IMPORTANT: must keep this in sync with what's in RPA.h!
   var arduinoStates = {
     0: "OFFLINE",
-    1: "WAITING_FOR_XMPP_CONNECTION",
-    2: "WAITING_FOR_EITHER_READY",
+    1: "CONNECTING",
+    2: "ONLINE",
     3: "WAITING_FOR_THEIR_READY",
     4: "WAITING_FOR_YOUR_READY",
-    5: "WAITING_FOR_EITHER_CHOICE",
+    5: "READY_TO_PLAY",
     6: "WAITING_FOR_THEIR_CHOICE",
     7: "WAITING_FOR_YOUR_CHOICE",
     8: "WAITING_FOR_RESULT"
@@ -189,8 +191,12 @@ function arduinoStateChange (stateNum) {
   rpa.emit("arduino_state_"+arduinoStates[stateNum]);
 }
 
+function arduinoInvalidTransition (eventName) {
+  console.error(color.redBright("!!! Arduino says that an invalid event was triggered:"), util.inspect(eventName, true, null, true));
+}
+
 function writeToArduino (cmd) {
-  console.log(">> [TO ARDUINO]", util.inspect(cmd, true, null, true));
+  console.log(color.blackBright(">> [TO ARDUINO]"), util.inspect(cmd, true, null, true));
   sp.write(cmd);
 }
 

@@ -5,16 +5,16 @@ class RPA {
     public:
         RPA();
 
-        enum WEAPON { ROCK, PAPER, SCISSORS };
+        enum WEAPON { ROCK = 'R', PAPER = 'P', SCISSORS = 'S' };
 
         struct States {
             enum STATE {
                 OFFLINE = 0,
-                WAITING_FOR_XMPP_CONNECTION = 1,
-                WAITING_FOR_EITHER_READY = 2,
+                CONNECTING = 1,
+                ONLINE = 2,
                 WAITING_FOR_THEIR_READY = 3,
                 WAITING_FOR_YOUR_READY = 4,
-                WAITING_FOR_EITHER_CHOICE = 5,
+                READY_TO_PLAY = 5,
                 WAITING_FOR_THEIR_CHOICE = 6,
                 WAITING_FOR_YOUR_CHOICE = 7,
                 WAITING_FOR_RESULT = 8
@@ -42,14 +42,14 @@ class RPA {
                 static const char YOU_CHOSE_SCISSORS = 's';
                 static const char READY_FOR_NEW_GAME = 'n'; // sent to daemon to signal that the arduino is ready for a new game
 
-                static const char INVALID_TRANSITION = '!'; // sent when an invalid transition occurs
+                // NOTE: there are also special ! and [ bytes that transmit errors and the Arduino's state, respectively
         };
 
         void connect();
         void (*on_connect)();
 
-        void online();
-        void (*on_online)();
+        void connected();
+        void (*on_connected)();
 
         void remote_ready();
         void (*on_remote_ready)();
@@ -72,8 +72,8 @@ class RPA {
         void tie();
         void (*on_tie)();
 
-        void offline();
-        void (*on_offline)();
+        void disconnected();
+        void (*on_disconnected)();
 
         void (*on_enter_state)(RPA::States::STATE state);
         void (*on_exit_state)(RPA::States::STATE from_state, RPA::States::STATE to_state);
@@ -96,12 +96,14 @@ class RPA {
         void set_your_weapon(RPA::WEAPON weapon);
 
         // called when attempting to make an impossible transition
-        void invalid_transition_error(const char* eventName);
+        void invalid_transition_error(String eventName);
 
         // processes an incoming Protocol byte from Serial
         void in(char c);
-        // sends out a Protocol byte over Seiral
+        // sends out a Protocol byte followed by \n over Serial
         void out(char c);
+        // sends out a string followed by \n over Serial (for longer commands)
+        void out(String &str);
 
 
 };

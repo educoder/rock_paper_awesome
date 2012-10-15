@@ -13,6 +13,10 @@ var serialport = require('serialport');
 var xmpp = require('node-xmpp');
 var color = require('cli-color');
 
+var os = require('os');
+var exec = require('child_process').exec;
+
+
 var sp;
 var chat;
 
@@ -213,10 +217,24 @@ function arduinoInvalidTransition (eventName) {
   console.error(color.redBright("!!! Arduino says that an invalid event was triggered:"), util.inspect(eventName, true, null, true));
 }
 
+if (os.arch() == 'arm') {
+  // FIXME: hacky way to write to serialport on Raspberry Pi....
+  //        sp.write() doesn't seem to work for some reason :(
+  function writeToSerialport(data) {
+    exec("echo '"+data+"' > "+SERIALPORT);
+  }
+} else {
+  function writeToSerialport(data) {
+    sp.write(cmd);
+  }
+}
+
+
 function writeToArduino (cmd) {
   console.log(color.blackBright(">> [TO ARDUINO]"), util.inspect(cmd, true, null, true));
-  sp.write(cmd);
+  writeToSerialport(cmd);
 }
+
 
 function Groupchat () {
   events.EventEmitter.call(this);

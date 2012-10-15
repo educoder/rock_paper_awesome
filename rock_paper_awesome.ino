@@ -1,7 +1,7 @@
 #include <stdio.h>
+#include "RPA.h"
 
 #define SERIAL_BAUDRATE 9600
-#define MILLISECONDS_PER_FRAME 30
 
 // the pins that control the brightness of RED, GREEN, and BLUE LEDs respectively
 #define R 9
@@ -13,32 +13,8 @@
 #define PIN_PAPER 4
 #define PIN_SCISSORS 5
 
-// PROTOCOL
-// >> incoming messages from node over serialport
-#define PROT_ONLINE '@'  // you are now online
-#define PROT_OFFLINE '#' // you are now offline
-#define PROT_NEW_GAME 'N'  // sent by node to indicate that we're starting a new game
-#define PROT_THEY_CHOSE_ROCK 'R'
-#define PROT_THEY_CHOSE_PAPER 'P'
-#define PROT_THEY_CHOSE_SCISSORS 'S'
-#define PROT_WAITING_FOR_YOU ':'
-#define PROT_WAITING_FOR_THEM ';'
-#define PROT_YOU_WON '+'
-#define PROT_YOU_LOST '-'
-#define PROT_TIE '='
-// << outgoing messages to node over serialport
-#define PROT_ARDUINO_READY '~' // sent to daemon to signal that the arduino is ready
-#define PROT_YOU_CHOSE_ROCK 'r'
-#define PROT_YOU_CHOSE_PAPER 'p'
-#define PROT_YOU_CHOSE_SCISSORS 's'
-#define PROT_READY_FOR_NEW_GAME 'n' // sent to daemon to signal that the arduino is ready for a new game
-
-// states
-#define STATE_OFFLINE 0
-#define STATE_WAITING_FOR_EITHER_CHOICE 1
-#define STATE_WAITING_FOR_YOUR_CHOICE 2
-#define STATE_WAITING_FOR_THEIR_CHOICE 3
-#define STATE_WAITING_FOR_GAME_OVER_CONFIRMATION 4
+// pin that receives input from the NEW GAME (READY) button
+#define PIN_READY 6
 
 // LED modes
 #define LED_MODE_STEADY 0
@@ -46,21 +22,104 @@
 #define LED_MODE_BLINK 2
 #define LED_MODE_PULSATE 3
 
-char state = STATE_OFFLINE;
-char yourChoice = NULL;
-char theirChoice = NULL;
+// instantiate a RockPaperAwesome state machine
+RPA rpa = RPA();
 
-// set to true once the choice has been reset -- used to prevent double-triggering when button is held down
-bool choiceWasReset = false;
+/*******************************************************************/
+/** EVENT HANDLERS *************************************************/
+/*******************************************************************/
 
-long frameCount = 0;
+void online() {
+  //blink(G, 3, 1000);
+  setLED(G, 5);
+}
 
-byte cR, cG, cB; // current values of the red, green, and blue LEDs
-byte tR, tG, tB; // target values of the LEDs (when fading/blinking/pulsating)
-int rR, rG, rB = 0; // rate at which the LEDs should change per frame (has different meaning for fading, pulsating, and blinking)
-byte mR, mG, mB = LED_MODE_STEADY; // the current mode for each LED (steady, fading, blinking, pulsating, etc.)
+void ready() {
+  //blink(G, 3, 1000);
+  setLED(G, 15);
+}
+
+// on_enter_state handler - called when the rpa enters a new state
+void entered_state(RPA::States::STATE state) {
+  blink(B, state, 200);
+  switch (state) {
+
+    case RPA::States::OFFLINE:
+      blink(R, 3, 600);
+      break;
+
+    case RPA::States::WAITING_FOR_EITHER_READY:
+    case RPA::States::WAITING_FOR_YOUR_READY:
+      rpa.ready();
+      break;
+
+    case RPA::States::WAITING_FOR_YOUR_CHOICE:
+      choose_random_weapon();
+      break;
+
+  }
+}
+
+// on_exit_state handler - called when the rpa exits a state
+void left_state(RPA::States::STATE old_state, RPA::States::STATE new_state) {
+  switch (old_state) {
+
+  }
+}
+
+// on_you_choose handler - called when you have chosen a weapon
+void you_chose(RPA::WEAPON weapon) {
+  switch(weapon) {
+    case RPA::ROCK:
+      setLED(R, 255);
+      break;
+    case RPA::PAPER:
+      setLED(G, 255);
+      break;
+    case RPA::SCISSORS:
+      setLED(B, 255);
+      break;
+  }
+}
+
+// on_you_win handler - called when you have won
+void you_win() {
+  blink(G, 5, 600);
+}
+
+// on_you_lose handler - called when you have lost
+void you_lose() {
+  blink(R, 5, 600);
+}
+
+// on_tie handler - called when you have tied
+void tie() {
+  blink(B, 5, 600);
+}
+
+void choose_random_weapon() {
+  RPA::WEAPON choice;
+  switch(random(1,3)) {
+  case 1:
+    choice = RPA::ROCK;
+    break;
+  case 2:
+    choice = RPA::PAPER;
+    break;
+  case 3:
+    choice = RPA::SCISSORS;
+    break;
+  }
+
+  rpa.you_choose(choice);
+}
+
+/*******************************************************************/
+/** SETUP AND MAIN LOOP ********************************************/
+/*******************************************************************/
 
 void setup() {
+  // initialize pins
   pinMode(R, OUTPUT);
   pinMode(G, OUTPUT);
   pinMode(B, OUTPUT);
@@ -72,148 +131,47 @@ void setup() {
   pinMode(PIN_SCISSORS, INPUT);
   setRGB(0,0,0);
   Serial.begin(SERIAL_BAUDRATE);
-  Serial.print(PROT_ARDUINO_READY); // tell the daemon that we're ready
+
+  // set up your handlers here
+  rpa.on_online = *online;
+  rpa.on_ready = *ready;
+  
+  rpa.on_enter_state = *entered_state;
+  rpa.on_exit_state = *left_state;
+
+  rpa.on_you_choose = *you_chose;
+  rpa.on_you_win = *you_win;
+  rpa.on_you_lose = *you_lose;
+  rpa.on_tie = *tie;
+
+  // tell Node that the arduino is ready and wants it to connect to XMPP
+  rpa.connect();
 }
 
 void loop() {
-  if (state == STATE_WAITING_FOR_EITHER_CHOICE || state == STATE_WAITING_FOR_YOUR_CHOICE) {
-    if (digitalRead(PIN_ROCK) == HIGH)
-      youChose(PROT_YOU_CHOSE_ROCK);
-    else if (digitalRead(PIN_PAPER) == HIGH)
-      youChose(PROT_YOU_CHOSE_PAPER);
-    else if (digitalRead(PIN_SCISSORS) == HIGH)
-      youChose(PROT_YOU_CHOSE_SCISSORS);
-  } else if (state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION) {
-    if (digitalRead(PIN_ROCK) == LOW && yourChoice == PROT_YOU_CHOSE_ROCK
-        || digitalRead(PIN_PAPER) == LOW && yourChoice == PROT_YOU_CHOSE_PAPER
-        || digitalRead(PIN_SCISSORS) == LOW && yourChoice == PROT_YOU_CHOSE_SCISSORS) {
-      choiceWasReset = true;
-    }
-
-    if (choiceWasReset && (digitalRead(PIN_ROCK) == HIGH || digitalRead(PIN_PAPER) == HIGH || digitalRead(PIN_SCISSORS))) {
-      choiceWasReset = false;
-      readyForNewGame();
-    }
+  if (digitalRead(PIN_READY) == HIGH) {
+    rpa.ready();
+  } else if (digitalRead(PIN_ROCK) == HIGH) {
+    rpa.you_choose(RPA::ROCK);
+  } else if (digitalRead(PIN_PAPER) == HIGH) {
+    rpa.you_choose(RPA::PAPER);
+  } else if (digitalRead(PIN_SCISSORS) == HIGH) {
+    rpa.you_choose(RPA::SCISSORS);
   }
-  
-  if (Serial.available() > 0) {
-    in(Serial.read());
-  }
+
+  rpa.check_input_from_serial();
 }
 
-// called for each incoming character from the serialport
-void in(char c) {
-  switch (c) {
-    case PROT_ONLINE:
-      online();
-      break;
-    case PROT_OFFLINE:
-      offline();
-      break;
-    case PROT_THEY_CHOSE_ROCK:
-    case PROT_THEY_CHOSE_PAPER:
-    case PROT_THEY_CHOSE_SCISSORS:
-      theyChose(c);
-      break;
-    case PROT_WAITING_FOR_YOU:
-      waitingForYou();
-      break;
-    case PROT_WAITING_FOR_THEM:
-      waitingForThem();
-      break;
-    case PROT_YOU_WON:
-      youWin();
-      break;
-    case PROT_YOU_LOST:
-      youLose();
-      break;
-    case PROT_TIE:
-      tie();
-      break;
-    case PROT_NEW_GAME:
-      newGame();
-      break;
-  }
-}
-
-// called when online
-void online() {
-  state = STATE_WAITING_FOR_EITHER_CHOICE;
-  blink(G, 3, 1000);
-}
-
-// called when offline
-void offline() {
-  state = STATE_OFFLINE;
-  blink(R, 3, 1000);
-}
-
-// called when you chose rock, paper, or scissors
-void youChose(char choice) {
-  yourChoice = choice;
-  switch(choice) {
-    case PROT_YOU_CHOSE_ROCK:
-      setLED(R, 255);
-      break;
-    case PROT_YOU_CHOSE_PAPER:
-      setLED(G, 255);
-      break;
-    case PROT_YOU_CHOSE_SCISSORS:
-      setLED(B, 255);
-      break;
-  }
-  Serial.print(choice);
-}
-
-// called when they chose rock, paper, or scissors
-void theyChose(char choice) {
-  theirChoice = choice;
-}
-
-// called when waiting for you to make a choice
-void waitingForYou() {
-  blink(G, 5, 200);
-}
-
-// called when waiting for them to make a choice
-void waitingForThem() {
-  blink(B, 5, 200);
-}
-
-void youWin() {
-  blink(G, 5, 1000);
-}
-
-void youLose() {
-  state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION;
-  blink(R, 5, 1000);
-}
-
-void tie() {
-  state = STATE_WAITING_FOR_GAME_OVER_CONFIRMATION;
-  blink(B, 5, 1000);
-}
-
-void readyForNewGame() {
-  Serial.print(PROT_READY_FOR_NEW_GAME);
-}
-
-void newGame() {
-  theirChoice = NULL;
-  yourChoice = NULL;
-  state = STATE_WAITING_FOR_EITHER_CHOICE;
-  
-  // TODO: do some blinky stuff here
-
-  //delay(2000); // wait 2 seconds before listening for other signals... otherwise we might catch a button held down too long
-}
+/*******************************************************************/
+/** HELPER FUNCTIONS ***********************************************/
+/*******************************************************************/
 
 // does any necessary transformation from a LED value to the value that should be written to the pin (using analogWrite)
 byte convertRGBval(byte val) {
   // due to the way my LEDs are wired, my pin values are inverted, so for me 0 == maximum, 255 == minimum
   // get rid of the "255-" for yours to revert to normal usage
-  //return 255-val;
-  return val;
+  return 255-val;
+  //return val;
 }
 
 // immediaely set the given led to the given brightness
@@ -229,12 +187,15 @@ void setRGB(byte r, byte g, byte b) {
 }
 
 void blink(byte pin, byte times, int delayTime) {
-  for (int i = 0; i <= times; i++) {
+  for (int i = 0; i < times; i++) {
     setLED(pin, 255);
     delay(delayTime);
     setLED(pin, 0);
     delay(delayTime / 2);
   }
 }
+
+
+
 
 

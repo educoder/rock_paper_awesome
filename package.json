@@ -18,7 +18,8 @@
   "dependencies" : {
     "serialport" :  "*",
     "node-xmpp" :  "*",
-    "cli-color" :  "*"
+    "cli-color" :  "*",
+    "node-gyp" : "*"
   },
   "analyze": false,
   "devDependencies": {

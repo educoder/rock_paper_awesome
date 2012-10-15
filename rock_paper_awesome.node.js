@@ -44,6 +44,16 @@ function RPA () {
 
   this.yourStateChangedTo('OFFLINE');
   this.theirStateChangedTo('OFFLINE');
+
+  this.isOnline = false;
+
+  var self = this;
+  setTimeout(function () {
+    if (!self.isOnline) {
+      console.log("Waited 10 seconds but haven't heard from Arduino... will try to go online anyway.");
+      self.goOnline();
+    }
+  }, 10000);
 }
 util.inherits(RPA, events.EventEmitter);
 
@@ -111,21 +121,26 @@ RPA.prototype.check = function () {
   }
 }
 
+RPA.prototype.goOnline = function () {
+  chat = new Groupchat();
+  chat.on('event', function (sev) {
+    rpa.emit(sev.eventType, sev);
+  });
+  chat.on('online', function () {
+    writeToArduino('@');
+  });
+  chat.on('joined', function () {
+    rpa.theirStateChangedTo('ONLINE');
+  });
+  chat.connect();
+  this.isOnline = true;
+}
+
 RPA.prototype.processInputFromArduino = function (cmd) {
   console.log(color.blackBright("<< [FROM ARDUINO]"), util.inspect(cmd, true, null, true));
   switch (cmd) {
   case '~':
-    chat = new Groupchat();
-    chat.on('event', function (sev) {
-      rpa.emit(sev.eventType, sev);
-    });
-    chat.on('online', function () {
-      writeToArduino('@');
-    });
-    chat.on('joined', function () {
-      rpa.theirStateChangedTo('ONLINE');
-    });
-    chat.connect();
+    rpa.goOnline();
     break;
   case 'n': 
     rpa.readyToStartNewGame();

@@ -16,10 +16,10 @@
     "url": "https://github.com/educoder/rock_paper_awesome.git"
   },
   "dependencies" : {
+    "node-gyp" : "*",
     "serialport" :  "*",
     "node-xmpp" :  "*",
     "cli-color" :  "*",
-    "node-gyp" : "*"
   },
   "analyze": false,
   "devDependencies": {

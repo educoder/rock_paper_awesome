@@ -1,0 +1,32 @@
+{
+  "name": "rock_paper_awesome",
+  "preferGlobal": "false",
+  "version": "0.0.1",
+  "author": "ENCORE Lab",
+  "description": "Rock, Paper, Awesome!",
+  "contributors": [ 
+    {
+      "name": "Matt Zukowski",
+      "email": "matt@zukowski.ca"
+    } 
+  ],
+  "main": "./rock_paper_awesome.node.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/educoder/rock_paper_awesome.git"
+  },
+  "dependencies" : {
+    "serialport" :  "*",
+    "node-xmpp" :  "*",
+    "cli-color" :  "*"
+  },
+  "analyze": false,
+  "devDependencies": {
+  },
+  "bundleDependencies": [
+  ],  
+  "license": "MIT",
+  "engines": {
+    "node": ">=0.8"
+  }
+}

@@ -48,6 +48,16 @@ function RPA () {
 
   this.yourStateChangedTo('OFFLINE');
   this.theirStateChangedTo('OFFLINE');
+
+  this.isOnline = false;
+
+  var self = this;
+  setTimeout(function () {
+    if (!self.isOnline) {
+      console.log("Waited 10 seconds but haven't heard from Arduino... will try to go online anyway.");
+      self.goOnline();
+    }
+  }, 10000);
 }
 util.inherits(RPA, events.EventEmitter);
 
@@ -115,21 +125,26 @@ RPA.prototype.check = function () {
   }
 }
 
+RPA.prototype.goOnline = function () {
+  chat = new Groupchat();
+  chat.on('event', function (sev) {
+    rpa.emit(sev.eventType, sev);
+  });
+  chat.on('online', function () {
+    writeToArduino('@');
+  });
+  chat.on('joined', function () {
+    rpa.theirStateChangedTo('ONLINE');
+  });
+  chat.connect();
+  this.isOnline = true;
+}
+
 RPA.prototype.processInputFromArduino = function (cmd) {
   console.log(color.blackBright("<< [FROM ARDUINO]"), util.inspect(cmd, true, null, true));
   switch (cmd) {
   case '~':
-    chat = new Groupchat();
-    chat.on('event', function (sev) {
-      rpa.emit(sev.eventType, sev);
-    });
-    chat.on('online', function () {
-      writeToArduino('@');
-    });
-    chat.on('joined', function () {
-      rpa.theirStateChangedTo('ONLINE');
-    });
-    chat.connect();
+    rpa.goOnline();
     break;
   case 'n': 
     rpa.readyToStartNewGame();
@@ -202,25 +217,11 @@ function arduinoInvalidTransition (eventName) {
   console.error(color.redBright("!!! Arduino says that an invalid event was triggered:"), util.inspect(eventName, true, null, true));
 }
 
-var writeToSerialport;
-if (os.arch() == 'arm') {
-  // FIXME: hacky way to write to serialport on Raspberry Pi....
-  //        sp.write() doesn't seem to work for some reason :(
-  writeToSerialport = function (data) {
-    exec("echo '"+data+"' > "+SERIALPORT);
-  }
-} else {
-  writeToSerialport = function (data) {
-    sp.write(data);
-  }
+function writeToArduino (data) {
+  console.log(color.blackBright(">> [TO ARDUINO]"), util.inspect(data, true, null, true));
+  sp.write(data);
+  sp.flush(); // might not be necessary?
 }
-
-
-function writeToArduino (cmd) {
-  console.log(color.blackBright(">> [TO ARDUINO]"), util.inspect(cmd, true, null, true));
-  writeToSerialport(cmd);
-}
-
 
 function Groupchat () {
   events.EventEmitter.call(this);

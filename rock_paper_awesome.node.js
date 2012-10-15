@@ -2,6 +2,9 @@
 
 "use strict";
 
+//var SERIALPORT = '/dev/cu.usbmodemfd131';
+var SERIALPORT = '/dev/tty.usbserial-A6006klc';
+
 // FIXME: this is in bad need of a rewrite
 
 var util = require('util');
@@ -32,7 +35,7 @@ var MY_JID_IN_ROOM = ROOM_JID + "/" + NICK;
 //   });
 // });
 
-sp = new serialport.SerialPort('/dev/cu.usbmodemfd131', {
+sp = new serialport.SerialPort(SERIALPORT, {
   parser: serialport.parsers.readline("\r\n")
 });
 

@@ -18,6 +18,7 @@ Rock Paper Awesome
    to the dev that represents your USB serial connection to your Arduino
 4. Run `node rock_paper_awesome.node.js`
 
+See [the Raspberry Pi wiki page](https://github.com/educoder/rock_paper_awesome/wiki/Running-on-a-Raspberry-Pi) for additional notes about running on a Raspberry Pi.
 
 # License
 This software is available under the [MIT licence](http://www.opensource.org/licenses/mit-license.php)

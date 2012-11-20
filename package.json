@@ -20,6 +20,7 @@
     "serialport" :  "*",
     "node-xmpp" :  "*",
     "cli-color" :  "*",
+    "machina" : "*"
   },
   "analyze": false,
   "devDependencies": {

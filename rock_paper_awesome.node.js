@@ -2,7 +2,7 @@
 
 "use strict";
 
-var SERIALPORT = '/dev/tty.usbmodemfa141';
+var SERIALPORT = '/dev/tty.usbmodemfd131';
 //var SERIALPORT = '/dev/tty.usbserial-A6006klc';
 
 // FIXME: this is in bad need of a rewrite
@@ -12,6 +12,7 @@ var events = require('events');
 var serialport = require('serialport');
 var xmpp = require('node-xmpp');
 var color = require('cli-color');
+var machina = require('machina');
 
 var os = require('os');
 var exec = require('child_process').exec;
@@ -46,20 +47,116 @@ sp = new serialport.SerialPort(SERIALPORT, {
 function RPA () {
   events.EventEmitter.call(this);
 
-  this.yourStateChangedTo('OFFLINE');
-  this.theirStateChangedTo('OFFLINE');
+  this.arduinoSaidHello = false;
 
-  this.isOnline = false;
+  this.winCount = 0;
+  this.loseCount = 0;
 
   var self = this;
   setTimeout(function () {
-    if (!self.isOnline) {
+    if (!self.arduinoSaidHello) {
       console.log("Waited 10 seconds but haven't heard from Arduino... will try to go online anyway.");
-      self.goOnline();
+      self.enterDojo();
     }
   }, 10000);
 }
 util.inherits(RPA, events.EventEmitter);
+
+
+RPA.Fsm = machina.Fsm.extend({
+  initialize: function () {
+
+  },
+  eventListeners: {
+    disconnected: [function () { 
+      this.transition('OFFLINE') 
+    }]
+  },
+  initialState: 'OFFLINE',
+  states: {
+    'OFFLINE': {
+      connect: function () {
+        this.transition('CONNECTING');
+      },
+      connected: function () {
+        this.transition('ONLINE');
+      }
+    },
+    'CONNECTING': {
+      connected: function () {
+        this.transition('ONLINE');
+      }
+    },
+    'ONLINE': {
+      ready: function () {
+        rpa.bow();
+        this.transition('WAITING_FOR_THEIR_READY');
+      },
+      remote_ready: function () {
+        this.transition('WAITING_FOR_YOUR_READY');
+      }
+    },
+    'WAITING_FOR_YOUR_READY': {
+      ready: function () {
+        rpa.bow();
+        this.transition('READY_TO_PLAY');
+      }
+    },
+    'WAITING_FOR_THEIR_READY': {
+      remote_ready: function () {
+        this.transition('READY_TO_PLAY');
+      }
+    },
+    'READY_TO_PLAY': {
+      you_choose: function (weapon) {
+        rpa.setYourWeapon(weapon);
+        this.transition('WAITING_FOR_THEIR_CHOICE');
+      },
+      they_choose: function (weapon) {
+        this.transition('WAITING_FOR_YOUR_CHOICE');
+      }
+    },
+    'WAITING_FOR_THEIR_CHOICE': {
+      they_choose: function(weapon) {
+        this.transition('WAITING_FOR_RESULT');
+      }
+    },
+    'WAITING_FOR_YOUR_CHOICE': {
+      you_choose: function (weapon) {
+        rpa.setYourWeapon(weapon)
+        this.transition('WAITING_FOR_RESULT');
+      }
+    },
+    'WAITING_FOR_RESULT': {
+      _onEnter: function () {
+        rpa.checkOutcome();
+      },
+      you_win: function () {
+        this.winCount++;
+        this.transition('ONLINE');
+      },
+      you_lose: function () {
+        this.loseCount++;
+        this.transition('ONLINE');
+      },
+      tie: function () {
+        this.transition('ONLINE');
+      }
+    }
+  },
+
+  sendEventToArduino: function(event, arg) {
+    if (arg)
+      writeToArduino("> "+event+" "+arg);
+    else
+      writeToArduino("> "+event);
+  },
+
+  sendStateToArduino: function(state) {
+    writeToArduino("= "+state);
+  }
+});
+
 
 RPA.prototype.yourStateChangedTo = function (newState) {
   console.log("*----------------------[ MY Node's STATE:", util.inspect(newState, true, null, true));
@@ -71,9 +168,9 @@ RPA.prototype.theirStateChangedTo = function (newState) {
   this.theirState = newState;
 };
 
-RPA.prototype.readyToStartNewGame = function () {
+RPA.prototype.bow = function () {
   var rpa = this;
-  this.yourChoice = null;
+  this.yourWeapon = null;
   if (this.theirState === 'OFFLINE') {
     console.log("Waiting for other player to come online...");
     chat.once('online', function () {
@@ -89,81 +186,99 @@ RPA.prototype.readyToStartNewGame = function () {
   }
 };
 
-RPA.prototype.youChoose = function (choice) {
-  var c;
-  switch (choice) {
-  case 'r':
-    c = 'Rock';
-    break;
-  case 'p':
-    c = 'Paper';
-    break;
-  case 's':
-    c = 'Scissors';
-    break;
-  }
-  console.log("~~~ You chose ", util.inspect(c, true, null, true));
-  this.yourChoice = c;
-  if (this.yourState === 'WAITING_FOR_YOUR_CHOICE') {
-    var self = this;
-    this.once('arduino_state_WAITING_FOR_RESULT', function () {
-      self.check();
-    });
-  }
-  chat.sendEvent('choice', {weapon: c});
+RPA.prototype.setYourWeapon = function (weapon) {
+  console.log("~~~ You chose ", util.inspect(weapon, true, null, true));
+  this.yourWeapon = weapon;
+  chat.sendEvent('choice', {weapon: weapon});
 };
 
-RPA.prototype.check = function () {
-  if (this.yourChoice === this.theirChoice) {
-    writeToArduino('=');
-  } else if (this.yourChoice === "Rock" && this.theirChoice === "Scissors" ||
-      this.yourChoice === "Paper" && this.theirChoice === "Rock" ||
-      this.yourChoice === "Scissors" && this.theirChoice === "Paper") {
-    writeToArduino('+');
+RPA.prototype.checkOutcome = function () {
+  if (this.yourWeapon === this.theirWeapon) {
+    this.fsm.handle('tie');
+  } else if (this.yourWeapon === "Rock" && this.theirWeapon === "Scissors" ||
+      this.yourWeapon === "Paper" && this.theirWeapon === "Rock" ||
+      this.yourWeapon === "Scissors" && this.theirWeapon === "Paper") {
+    this.fsm.handle('you_win');
   } else {
-    writeToArduino('-');
+    this.fsm.handle('you_lose');
   }
 }
 
-RPA.prototype.goOnline = function () {
+RPA.prototype.enterDojo = function () {
+  var fsm = new RPA.Fsm();
+  fsm.on('*', function (type, info) { 
+    if (type === 'transition') {
+      console.log("TRANSITION==[", color.xterm(202)(info.fromState), '----'+fsm.currentActionArgs[0]+'---->', color.greenBright(info.toState));
+      fsm.sendStateToArduino(info.toState);
+    } else if (type === 'handling') {
+      console.log("EVENT=======[", color.xterm(51)(info.inputType), info.args);
+      fsm.sendEventToArduino(info.inputType, info.args[0]);
+    } else if (type === 'handled') {
+      // nothing right now...
+    } else if (type === 'nohandler') {
+      console.error(color.red("!!!"),color.black.bgRed(info.inputType),color.red("is not a valid event at this time!"));
+    } else {
+      console.log(type, info);
+    }
+  });
+  var rpa = this;
+
+  fsm.on('ready', function () {
+    rpa.bow();
+  });
+
+  this.fsm = fsm;
   chat = new Groupchat();
   chat.on('event', function (sev) {
     rpa.emit(sev.eventType, sev);
   });
   chat.on('online', function () {
-    writeToArduino('@');
+    fsm.handle('connect');
   });
   chat.on('joined', function () {
-    rpa.theirStateChangedTo('ONLINE');
+    fsm.handle('connected');
   });
   chat.connect();
-  this.isOnline = true;
+  this.arduinoSaidHello = true;
 }
 
-RPA.prototype.processInputFromArduino = function (cmd) {
-  console.log(color.blackBright("<< [FROM ARDUINO]"), util.inspect(cmd, true, null, true));
-  switch (cmd) {
-  case '~':
-    rpa.goOnline();
-    break;
-  case 'n': 
-    rpa.readyToStartNewGame();
-    break;
-  case 'r':
-  case 'p':
-  case 's':
-    rpa.youChoose(cmd);
-    break;
-  default:
-    var match;
-    if (match = cmd.match(/\[(\d)/)) {
-      arduinoStateChange(parseInt(match[1]));
-    } else if (match = cmd.match(/!(.+)/)) {
-      arduinoInvalidTransition(match[1]);
-    } else {
-      console.warn(color.red("!!! Unknown message from Arduino: "), cmd.toString());
-    }
+RPA.prototype.processInputFromArduino = function (input) {
+  console.log(color.blackBright("<< [FROM ARDUINO]"), util.inspect(input, true, null, true));
+  
+  var c = input.split(" ");
+  var ctrl = c[0];
+  var cmd = c[1];
+  var arg = c[2];
+
+  if (input === '~') {
+    this.enterDojo();
+  } else if (ctrl === '<') {
+    this.fsm.handle(cmd, arg);
+  } else {
+    console.warn(color.red("!!! Unknown message from Arduino: "), input.toString());
   }
+  // switch (cmd) {
+  // case '~':
+  //   rpa.enterDojo();
+  //   break;
+  // case 'n': 
+  //   rpa.bow();
+  //   break;
+  // case 'r':
+  // case 'p':
+  // case 's':
+  //   rpa.setYourWeapon(cmd);
+  //   break;
+  // default:
+  //   var match;
+  //   if (match = cmd.match(/\[(\d)/)) {
+  //     arduinoStateChange(parseInt(match[1]));
+  //   } else if (match = cmd.match(/!(.+)/)) {
+  //     arduinoInvalidTransition(match[1]);
+  //   } else {
+  //     console.warn(color.red("!!! Unknown message from Arduino: "), cmd.toString());
+  //   }
+  // }
 }
 
 var rpa = new RPA();
@@ -171,21 +286,15 @@ var rpa = new RPA();
 rpa.on('ready', function (sev) { // remote_ready
   console.log("~~~ Other player is ready!");
   rpa.theirStateChangedTo('READY');
-  this.theirChoice = null;
-  writeToArduino('N');
+  this.theirWeapon = null;
+  rpa.fsm.handle('remote_ready');
 });
 rpa.on('choice', function (sev) {
   var weapon = sev.payload.weapon;
   console.log("~~~ Other player chose ", util.inspect(weapon, true, null, true));
   this.theirStateChangedTo("CHOSEN");
-  this.theirChoice = weapon;
-  if (this.yourState === 'WAITING_FOR_THEIR_CHOICE') {
-    var self = this;
-    this.once('arduino_state_WAITING_FOR_RESULT', function () {
-      self.check();
-    });
-  }
-  writeToArduino(weapon[0]);
+  this.theirWeapon = weapon;
+  rpa.fsm.handle('they_choose', weapon);
 });
 
 sp.on("data", function (data) {
@@ -193,33 +302,9 @@ sp.on("data", function (data) {
   rpa.processInputFromArduino(input);
 });
 
-function arduinoStateChange (stateNum) {
-
-  // IMPORTANT: must keep this in sync with what's in RPA.h!
-  var arduinoStates = {
-    0: "OFFLINE",
-    1: "CONNECTING",
-    2: "ONLINE",
-    3: "WAITING_FOR_THEIR_READY",
-    4: "WAITING_FOR_YOUR_READY",
-    5: "READY_TO_PLAY",
-    6: "WAITING_FOR_THEIR_CHOICE",
-    7: "WAITING_FOR_YOUR_CHOICE",
-    8: "WAITING_FOR_RESULT"
-  };
-
-  console.log("*-[ MY Arduino's STATE: ", util.inspect(arduinoStates[stateNum], true, null, true));
-  rpa.yourStateChangedTo(arduinoStates[stateNum]);
-  rpa.emit("arduino_state_"+arduinoStates[stateNum]);
-}
-
-function arduinoInvalidTransition (eventName) {
-  console.error(color.redBright("!!! Arduino says that an invalid event was triggered:"), util.inspect(eventName, true, null, true));
-}
-
 function writeToArduino (data) {
   console.log(color.blackBright(">> [TO ARDUINO]"), util.inspect(data, true, null, true));
-  sp.write(data);
+  sp.write(data+"\n");
   sp.flush(); // might not be necessary?
 }
 

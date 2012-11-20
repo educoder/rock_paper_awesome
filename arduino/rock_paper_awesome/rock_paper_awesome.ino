@@ -186,7 +186,6 @@ void setup() {
 }
 
 void loop() {
-  // Serial.println(".");
   if (readyButton.uniquePress())
     rpa.bow();
   

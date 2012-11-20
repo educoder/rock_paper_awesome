@@ -35,81 +35,109 @@ Button readyButton = Button(PIN_READY, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBO
 /** EVENT HANDLERS *************************************************/
 /*******************************************************************/
 
-// on_connected event handler -- called when we're connected to the XMPP chatroom
-void connected() {
+// when you've requested a connection to the XMPP server
+void on_connect() {
   //blink(G, 3, 1000);
 }
 
-// on_ready event handler -- called when we've signaled that we're ready to play a game
-void ready() {
+// when you're connected to the XMPP chatroom
+void on_connected() {
+  //blink(G, 3, 1000);
+}
+
+// when you've signaled that we're ready to play a game
+void on_ready() {
   //blink(G, 3, 1000);
   setLED(G, 15);
 }
 
-// on_you_choose event handler - called when you have chosen a weapon
-void you_chose(RPA::WEAPON weapon) {
-  switch(weapon) {
-    case RPA::ROCK:
-      setLED(R, 255);
-      break;
-    case RPA::PAPER:
-      setLED(G, 255);
-      break;
-    case RPA::SCISSORS:
-      setLED(B, 255);
-      break;
-  }
+// when the other player has signaled that they're ready to play a game
+void on_remote_ready() {
+  //blink(G, 3, 1000);
 }
 
-// on_you_win event handler - called when you have won
-void you_win() {
+// when you have chosen a weapon
+void on_you_choose(String weapon) {
+  if (weapon == "Rock")
+    setLED(R, 255);
+  else if (weapon == "Paper")
+      setLED(G, 255);
+  else if (weapon == "Scissors")
+      setLED(B, 255);
+}
+
+// when the other player has chosen a weapon
+void on_they_choose(String weapon) {
+  //blink(G, 3, 1000);
+}
+
+// when you've won
+void on_you_win() {
   blink(G, 5, 600);
 }
 
-// on_you_lose event handler - called when you have lost
-void you_lose() {
+// when you've lost
+void on_you_lose() {
   blink(R, 5, 600);
 }
 
-// on_tie event handler - called when you have tied
-void tie() {
+// when you've tied
+void on_tie() {
   blink(B, 5, 600);
 }
 
-// NOTE: there are many more possible handlers -- one for each event
-
-
-// on_enter_state handler - called when the rpa enters a new state
-void entered_state(RPA::States::STATE state) {
-  //blink(B, 1, 200);
-  switch (state) {
-
-    case RPA::States::ONLINE:
-      setRGB(0,0,0);
-      setLED(G, 5);
-      break;
-
-    case RPA::States::OFFLINE:
-      blink(R, 3, 600);
-      setLED(R, 5);
-      break;
-
-    // you can add a case for each possible state
-
-  }
+// when you've been disconnected
+void on_disconnected() {
+  // blink(B, 5, 600);
 }
 
-// on_exit_state handler - called when the rpa exits a state
-void left_state(RPA::States::STATE old_state, RPA::States::STATE new_state) {
-  switch (old_state) {
+/*******************************************************************/
+/** STATE HANDLERS *************************************************/
+/*******************************************************************/
 
-    // you can add a case for each possible state
-    // NOTE: don't try to trigger events here or do anything
-    //       else that results in an event transition -- at
-    //       this point the previous transition hasn't completed
-    //       and you will either derail it or cause an invalid_transition_error 
+// when you're offline
+void while_OFFLINE() {
+  setLED(R, 15);
+}
 
-  }
+// while connecting to XMPP
+void while_CONNECTING() {
+  //setLED(R, 15);
+}
+
+// while online, waiting for a game to start
+void while_ONLINE() {
+  setLED(G, 5);
+}
+
+// while waiting for you to say you're ready
+void while_WAITING_FOR_YOUR_READY() {
+  //setLED(R, 15);
+}
+
+// while waiting for the other player to say they're ready
+void while_WAITING_FOR_THEIR_READY() {
+  //setLED(R, 15);
+}
+
+// while waiting for both players to choose a weapon
+void while_READY_TO_PLAY() {
+  //setLED(R, 15);
+}
+
+// while waiting for you to choose a weapon
+void while_WAITING_FOR_YOUR_CHOICE() {
+  //setLED(R, 15);
+}
+
+// while waiting for the other player to choose a weapon
+void while_WAITING_FOR_THEIR_CHOICE() {
+  //setLED(R, 15);
+}
+
+// while waiting to find out who won or lost
+void while_WAITING_FOR_RESULT() {
+  //setLED(R, 15);
 }
 
 /*******************************************************************/
@@ -131,36 +159,44 @@ void setup() {
   Serial.begin(SERIAL_BAUDRATE);
 
   // wire up your event handlers here (all optional)
-  //rpa.on_connect = *_____;
-  rpa.on_connected = *connected;
-  rpa.on_ready = *ready;
-  //rpa.on_remote_ready = *_____;
-  //rpa.on_offline = *_____;
-  rpa.on_you_choose = *you_chose;
-  rpa.on_you_win = *you_win;
-  rpa.on_you_lose = *you_lose;
-  rpa.on_tie = *tie;
-  
-  // .. and  state enter/exit handlers here (all optional)
-  rpa.on_enter_state = *entered_state;
-  rpa.on_exit_state = *left_state;
+  rpa.connect = *on_connect;
+  rpa.connected = *on_connected;
+  rpa.ready = *on_ready;
+  rpa.remote_ready = *on_remote_ready;
+  rpa.you_choose = *on_you_choose;
+  rpa.they_choose = *on_they_choose;
+  rpa.you_win = *on_you_win;
+  rpa.you_lose = *on_you_lose;
+  rpa.tie = *on_tie;
+  rpa.disconnected = *on_disconnected;
 
-  // tell Node that the arduino is ready and wants it to connect to XMPP
-  rpa.connect();
+  // wire up your state entry handlers here (all optional)
+  rpa.OFFLINE = *while_OFFLINE;
+  rpa.CONNECTING = *while_CONNECTING;
+  rpa.ONLINE = *while_ONLINE;
+  rpa.WAITING_FOR_YOUR_READY = *while_WAITING_FOR_YOUR_READY;
+  rpa.WAITING_FOR_THEIR_READY = *while_WAITING_FOR_THEIR_READY;
+  rpa.READY_TO_PLAY = *while_READY_TO_PLAY;
+  rpa.WAITING_FOR_YOUR_CHOICE = *while_WAITING_FOR_YOUR_CHOICE;
+  rpa.WAITING_FOR_THEIR_CHOICE = *while_WAITING_FOR_THEIR_CHOICE;
+  rpa.WAITING_FOR_RESULT = *while_WAITING_FOR_RESULT;
+
+  // tell Node that the Arduino is ready and wants it to connect to XMPP
+  rpa.say_hello();
 }
 
 void loop() {
   if (readyButton.uniquePress())
-    rpa.ready();
+    rpa.bow();
   
   if (rockButton.uniquePress())
-    rpa.you_choose(RPA::ROCK);
+    rpa.choose_ROCK();
   
   if (paperButton.uniquePress())
-    rpa.you_choose(RPA::PAPER);
+    rpa.choose_PAPER();
 
   if (scissorsButton.uniquePress())
-    rpa.you_choose(RPA::SCISSORS);
+    rpa.choose_SCISSORS();
 
   rpa.check_input_from_serial();
 }
@@ -173,7 +209,7 @@ void loop() {
 byte convertRGBval(byte val) {
   // due to the way my LEDs are wired, my pin values are inverted, so for me 0 == maximum, 255 == minimum
   // get rid of the "255-" for yours to revert to normal usage
-  return 255-val;
+  return val;
   //return val;
 }
 

@@ -23,14 +23,13 @@ var exec = require('child_process').exec;
 var sp;
 var chat;
 
-var HOST = "badger.encorelab.org";
+var HOST = process.argv[4] || "badger.encorelab.org";
 var USER = process.argv[2];
 var NICK = USER;
 var PASSWORD = process.argv[3];
 
-console.log("pass",PASSWORD);
 if (!PASSWORD) {
-  console.error("\nUsage: node awesome.js USERNAME PASSWORD\n");
+  console.error("\nUsage: node awesome.js USERNAME PASSWORD [HOSTNAME]\n");
   process.exit(1);
 }
 

@@ -84,11 +84,11 @@ function RPA () {
   this.winCount = 0;
   this.loseCount = 0;
 
-  var self = this;
+  var rpa = this;
   setTimeout(function () {
-    if (!self.arduinoSaidHello) {
+    if (!rpa.arduinoSaidHello) {
       console.log("Waited 10 seconds but haven't heard from Arduino... will try to go online anyway.");
-      self.enterDojo();
+      rpa.enterDojo();
     }
   }, 10000);
 }
@@ -205,7 +205,7 @@ RPA.prototype.bow = function () {
   this.yourWeapon = null;
   if (this.theirState === 'OFFLINE') {
     console.log("Waiting for other player to come online...");
-    chat.once('online', function () {
+    chat.once('i_entered_room', function () {
       console.log("Other player is ONLINE, telling them that we're ready!");
       chat.sendEvent('ready');
     });
@@ -237,39 +237,44 @@ RPA.prototype.checkOutcome = function () {
 }
 
 RPA.prototype.enterDojo = function () {
-  var fsm = new RPA.Fsm();
-  fsm.on('*', function (type, info) { 
-    if (type === 'transition') {
-      console.log("TRANSITION==[", color.xterm(202)(info.fromState), '----'+fsm.currentActionArgs[0]+'---->', color.greenBright(info.toState));
-      fsm.sendStateToArduino(info.toState);
-    } else if (type === 'handling') {
-      console.log("EVENT=======[", color.xterm(51)(info.inputType), info.args);
-      fsm.sendEventToArduino(info.inputType, info.args[0]);
-    } else if (type === 'handled') {
-      // nothing right now...
-    } else if (type === 'nohandler') {
-      console.error(color.red("!!!"),color.black.bgRed(info.inputType),color.red("is not a valid event at this time!"));
-    } else {
-      console.log(type, info);
-    }
-  });
-  var rpa = this;
 
-  fsm.on('ready', function () {
-    rpa.bow();
-  });
+  if (!this.fsm) {
+    var fsm = new RPA.Fsm();
+    fsm.on('*', function (type, info) { 
+      if (type === 'transition') {
+        console.log("TRANSITION==[", color.xterm(202)(info.fromState), '----'+fsm.currentActionArgs[0]+'---->', color.greenBright(info.toState));
+        fsm.sendStateToArduino(info.toState);
+      } else if (type === 'handling') {
+        console.log("EVENT=======[", color.xterm(51)(info.inputType), info.args);
+        fsm.sendEventToArduino(info.inputType, info.args[0]);
+      } else if (type === 'handled') {
+        // nothing right now...
+      } else if (type === 'nohandler') {
+        console.error(color.red("!!!"),color.black.bgRed(info.inputType),color.red("is not a valid event at this time!"));
+      } else {
+        console.log(type, info);
+      }
+    });
+    var rpa = this;
 
-  this.fsm = fsm;
-  chat = new Groupchat();
-  chat.on('event', function (sev) {
-    rpa.emit(sev.eventType, sev);
-  });
-  chat.on('online', function () {
-    fsm.handle('connect');
-  });
-  chat.on('joined', function () {
-    fsm.handle('connected');
-  });
+    fsm.on('ready', function () {
+      rpa.bow();
+    });
+
+    this.fsm = fsm;
+    chat = new Groupchat();
+    chat.on('event', function (sev) {
+      rpa.emit(sev.eventType, sev);
+    });
+    chat.on('i_entered_room', function () {
+      fsm.handle('connected');
+    });
+    chat.on('they_entered_room', function () {
+      console.log("Another player entered the room.");
+      // fsm.handle('connected');
+    });
+  }
+  
   chat.connect();
   this.arduinoSaidHello = true;
 }
@@ -356,12 +361,14 @@ Groupchat.prototype.connect = function () {
     chat.client.on('stanza', function (stanza) {
       if (stanza.is('presence') && stanza.attrs.from == MY_JID_IN_ROOM) {
         console.log("XMPP: Joined room "+ROOM_JID);
-        chat.emit('online');
+        chat.emit('i_entered_room');
+
       } else if (stanza.is('presence') && stanza.attrs.from != MY_JID_IN_ROOM) {
         console.log("XMPP: "+util.inspect(stanza.attrs.from, true, null, true)+" joined "+ROOM_JID);
         chat.roster.push(stanza.attrs.from);
-        chat.emit('joined', stanza.attrs.from);
+        chat.emit('they_entered_room', stanza.attrs.from);
         // TODO: implement 'left'
+
       } else if (stanza.is('message') && stanza.attrs.type == 'groupchat' &&
           stanza.attrs.from != MY_JID_IN_ROOM) {
         var msg = stanza.getChildText('body');

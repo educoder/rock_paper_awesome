@@ -2,7 +2,8 @@
 
 "use strict";
 
-var SERIALPORT = '/dev/tty.usbmodemfd131';
+var SERIALPORT = undefined;
+//var SERIALPORT = '/dev/tty.usbmodemfd131';
 //var SERIALPORT = '/dev/tty.usbserial-A6006klc';
 
 // FIXME: this is in bad need of a rewrite
@@ -15,6 +16,7 @@ var color = require('cli-color');
 var machina = require('machina');
 
 var os = require('os');
+var fs = require('fs');
 var exec = require('child_process').exec;
 
 
@@ -40,7 +42,37 @@ var MY_JID_IN_ROOM = ROOM_JID + "/" + NICK;
 //   });
 // });
 
-sp = new serialport.SerialPort(SERIALPORT, {
+function detectArduino() {
+  if (SERIALPORT) {
+    console.log("Using hardcoded SERIALPORT for Arduino dev: ", SERIALPORT);
+    return SERIALPORT;
+  }
+
+  var devs = fs.readdirSync('/dev/');
+  var possibleArduinoDevs = [];
+  for (var i in devs) {
+    if (devs[i].match(/^tty.*?(USB|ACM).*?/i)) {
+      possibleArduinoDevs.push(devs[i]);
+    }
+  }
+
+  if (possibleArduinoDevs.length > 0) {
+    console.log("Found possible Arduinos:")
+    for (var i in possibleArduinoDevs) {
+      console.log("  ", possibleArduinoDevs[i]);
+    }
+    console.log("");
+    var arduinoDev = possibleArduinoDevs[0];
+    console.log("Using: ", arduinoDev);
+    console.log("");
+    return "/dev/"+arduinoDev;
+  } else {
+    console.error("No Arduino dev found. Please make sure it is plugged in or hardcode a SERIALPORT value in "+__filename+".");
+    return undefined;
+  }
+}
+
+sp = new serialport.SerialPort(detectArduino(), {
   parser: serialport.parsers.readline("\r\n")
 });
 

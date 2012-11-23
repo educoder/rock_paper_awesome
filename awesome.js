@@ -24,8 +24,8 @@ var sp;
 var chat;
 
 var HOST = "badger.encorelab.org";
-var USER = "toronto";
-var NICK = process.argv[2] || USER;
+var USER = process.argv[2];
+var NICK = USER;
 var PASSWORD = process.argv[3];
 
 console.log("pass",PASSWORD);

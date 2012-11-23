@@ -26,7 +26,13 @@ var chat;
 var HOST = "badger.encorelab.org";
 var USER = "toronto";
 var NICK = process.argv[2] || USER;
-var PASSWORD = "toronto";
+var PASSWORD = process.argv[3];
+
+console.log("pass",PASSWORD);
+if (!PASSWORD) {
+  console.error("\nUsage: node awesome.js USERNAME PASSWORD\n");
+  process.exit(1);
+}
 
 var MY_JID = USER + "@" + HOST;
 var ROOM_JID = "rock-paper-awesome@conference." + HOST;
@@ -107,7 +113,7 @@ RPA.Fsm = machina.Fsm.extend({
   initialState: 'OFFLINE',
   states: {
     'OFFLINE': {
-      connect: function () {
+      connecting: function () {
         this.transition('CONNECTING');
       },
       connected: function () {
@@ -239,6 +245,7 @@ RPA.prototype.checkOutcome = function () {
 RPA.prototype.enterDojo = function () {
 
   if (!this.fsm) {
+    console.log("Initializing FSM...");
     var fsm = new RPA.Fsm();
     fsm.on('*', function (type, info) { 
       if (type === 'transition') {
@@ -353,7 +360,15 @@ util.inherits(Groupchat, events.EventEmitter);
 
 Groupchat.prototype.connect = function () {
   var chat = this;
+  console.log("Connecting to XMPP Groupchat as ",MY_JID,"...")
+  rpa.fsm.handle('connecting');
+
   chat.client = new xmpp.Client({jid: MY_JID, password: PASSWORD});
+
+  chat.client.on('error', function (error) {
+    console.error("XMPP ERROR: ",color.red(error));
+  });
+
   chat.client.on('online', function () {
     console.log("XMPP: Connected to " + MY_JID);
     chat.emit('connected');
@@ -385,7 +400,6 @@ Groupchat.prototype.connect = function () {
 
     chat.client.send(new xmpp.Element('presence', { to: MY_JID_IN_ROOM }).
       c('x', { xmlns: 'http://jabber.org/protocol/muc' }));
-    chat.emit('connecting');
   });
 };
 

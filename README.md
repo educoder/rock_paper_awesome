@@ -3,20 +3,23 @@ Rock Paper Awesome
 
 # Quickstart
 
+See the [Awesome Assembly Instructions](https://github.com/educoder/rock_paper_awesome/blob/master/docs/Awesome%20Assembly%20Instructions.pdf?raw=true) for a detailed setup and customization guide.
+
 ### The Arduino part:
 
-1. `cd arduino/rock_paper_awesome`
-2. `cp rock_paper_awesome.example.ino rock_paper_awesome.ino`
+1. `cd arduino/awesome`
+2. `cp awesome.example.ino awesome.ino`
 3. Open the sketch in the Arduino IDE
 4. Customize to your heart's desire
 
 ### The node.js part:
 
-1. `cd` to the root directory where `rock_paper_awesome.node.js` is located
+1. `cd` to the root directory, where `awesome.js` is located
 2. `npm install` to install all necessary dependencies
-3. Edit the `SERIALPORT` value in `rock_paper_awesome.node.js` to point
-   to the dev that represents your USB serial connection to your Arduino
-4. Run `node rock_paper_awesome.node.js`
+3. Make sure you have a user account set up on your XMPP server.
+4. Run `node awesome.js USERNAME PASSWORD XMPPHOST`,
+   where `USERNAME` and `PASSWORD` is your XMPP username and password, and `XMPPHOST` is the hostname of your XMPP server.
+   For example: `node awesome.js batman gotham badger.encorelab.org`
 
 See [the Raspberry Pi wiki page](https://github.com/educoder/rock_paper_awesome/wiki/Running-on-a-Raspberry-Pi) for additional notes about running on a Raspberry Pi.
 

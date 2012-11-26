@@ -1,55 +1,95 @@
+#include <stdio.h>
+#include "Button.h"
 #include "RPA.h"
 
 #define SERIAL_BAUDRATE 9600
 
-#define LED 11
+// the pins that control the brightness of RED, GREEN, and BLUE LEDs respectively
+#define R 9
+#define G 10
+#define B 11
+
+// pins that receive input for ROCK, PAPER, and SCISSOR
+#define PIN_ROCK 5
+#define PIN_PAPER 7
+#define PIN_SCISSORS 6
+// pin that receives input from the NEW GAME (READY) button
+#define PIN_READY 3
+
+// wait this many ms before considering that a button has been pressed again
+#define BUTTON_DEBOUNCE_WAIT 50
 
 // instantiate a RockPaperAwesome state machine
 RPA rpa = RPA();
+
+// Button wrappers; uses the Button library
+//  -- see: https://github.com/virgildisgr4ce/Button
+Button rockButton = Button(PIN_ROCK, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBOUNCE_WAIT);
+Button paperButton = Button(PIN_PAPER, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBOUNCE_WAIT);
+Button scissorsButton = Button(PIN_SCISSORS, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBOUNCE_WAIT);
+
+Button readyButton = Button(PIN_READY, BUTTON_PULLUP_INTERNAL, true, BUTTON_DEBOUNCE_WAIT);
 
 
 /*******************************************************************/
 /** EVENT HANDLERS *************************************************/
 /*******************************************************************/
 
+// when you've requested a connection to the XMPP server
+void on_connect() {
+  //blink(G, 3, 1000);
+}
+
+// when you're connected to the XMPP chatroom
+void on_connected() {
+  //blink(G, 3, 1000);
+}
+
+// when you've signaled that we're ready to play a game
+void on_ready() {
+  //blink(G, 3, 1000);
+  setLED(G, 15);
+}
+
 // when the other player has signaled that they're ready to play a game
 void on_remote_ready() {
-  delay(1000);
-  rpa.bow();
+  //blink(G, 3, 1000);
+}
+
+// when you have chosen a weapon
+void on_you_choose(String weapon) {
+  if (weapon == "Rock")
+    setLED(R, 255);
+  else if (weapon == "Paper")
+      setLED(G, 255);
+  else if (weapon == "Scissors")
+      setLED(B, 255);
 }
 
 // when the other player has chosen a weapon
 void on_they_choose(String weapon) {
-  delay(1000);
-  int rand = random(1,3);
-  switch (rand) {
-    case 1:
-      rpa.choose_ROCK();
-      break;
-     case 2:
-       rpa.choose_PAPER();
-       break;
-     case 3:
-       rpa.choose_SCISSORS();
-       break;
-  }
+  //blink(G, 3, 1000);
 }
 
 // when you've won
 void on_you_win() {
-  blink(LED, 10, 100);
+  blink(G, 5, 600);
 }
 
 // when you've lost
 void on_you_lose() {
-  blink(LED, 3, 1000);
+  blink(R, 5, 600);
 }
 
 // when you've tied
 void on_tie() {
-  blink(LED, 2, 2000);
+  blink(B, 5, 600);
 }
 
+// when you've been disconnected
+void on_disconnected() {
+  // blink(B, 5, 600);
+}
 
 /*******************************************************************/
 /** STATE HANDLERS *************************************************/
@@ -57,47 +97,47 @@ void on_tie() {
 
 // when you're offline
 void while_OFFLINE() {
-  setLED(LED, 0);
+  setLED(R, 15);
 }
 
 // while connecting to XMPP
 void while_CONNECTING() {
-  setLED(LED, 5);
+  //setLED(R, 15);
 }
 
 // while online, waiting for a game to start
 void while_ONLINE() {
-  setLED(LED, 50);
+  setLED(G, 5);
 }
 
 // while waiting for you to say you're ready
 void while_WAITING_FOR_YOUR_READY() {
-  setLED(LED, 255);
+  //setLED(R, 15);
 }
 
 // while waiting for the other player to say they're ready
 void while_WAITING_FOR_THEIR_READY() {
-  setLED(LED, 255);
+  //setLED(R, 15);
 }
 
 // while waiting for both players to choose a weapon
 void while_READY_TO_PLAY() {
-  setLED(LED, 255);
+  //setLED(R, 15);
 }
 
 // while waiting for you to choose a weapon
 void while_WAITING_FOR_YOUR_CHOICE() {
-  setLED(LED, 255);
+  //setLED(R, 15);
 }
 
 // while waiting for the other player to choose a weapon
 void while_WAITING_FOR_THEIR_CHOICE() {
-  setLED(LED, 255);
+  //setLED(R, 15);
 }
 
 // while waiting to find out who won or lost
 void while_WAITING_FOR_RESULT() {
-  setLED(LED, 255);
+  //setLED(R, 15);
 }
 
 /*******************************************************************/
@@ -105,15 +145,30 @@ void while_WAITING_FOR_RESULT() {
 /*******************************************************************/
 
 void setup() {
-  pinMode(LED, OUTPUT);
+  // set up the Arduino hardware
+  pinMode(R, OUTPUT);
+  pinMode(G, OUTPUT);
+  pinMode(B, OUTPUT);
+  // digitalWrite(PIN_ROCK, LOW);
+  // digitalWrite(PIN_PAPER, LOW);
+  // digitalWrite(PIN_SCISSORS, LOW);
+  // pinMode(PIN_ROCK, INPUT);
+  // pinMode(PIN_PAPER, INPUT);
+  // pinMode(PIN_SCISSORS, INPUT);
+  setRGB(0,0,0);
   Serial.begin(SERIAL_BAUDRATE);
 
   // wire up your event handlers here (all optional)
+  rpa.connect = *on_connect;
+  rpa.connected = *on_connected;
+  rpa.ready = *on_ready;
   rpa.remote_ready = *on_remote_ready;
+  rpa.you_choose = *on_you_choose;
   rpa.they_choose = *on_they_choose;
   rpa.you_win = *on_you_win;
   rpa.you_lose = *on_you_lose;
   rpa.tie = *on_tie;
+  rpa.disconnected = *on_disconnected;
 
   // wire up your state entry handlers here (all optional)
   rpa.OFFLINE = *while_OFFLINE;
@@ -131,6 +186,18 @@ void setup() {
 }
 
 void loop() {
+  if (readyButton.uniquePress())
+    rpa.bow();
+  
+  if (rockButton.uniquePress())
+    rpa.choose_ROCK();
+  
+  if (paperButton.uniquePress())
+    rpa.choose_PAPER();
+
+  if (scissorsButton.uniquePress())
+    rpa.choose_SCISSORS();
+
   rpa.check_input_from_serial();
 }
 
@@ -140,12 +207,22 @@ void loop() {
 
 // does any necessary transformation from a LED value to the value that should be written to the pin (using analogWrite)
 byte convertRGBval(byte val) {
-  return val;
+  // due to the way my LEDs are wired, my pin values are inverted, so for me 0 == maximum, 255 == minimum
+  // get rid of the "255-" for yours to revert to normal usage
+  return 255-val;
+  //return val;
 }
 
 // immediaely set the given led to the given brightness
 void setLED(byte pin, byte val) {
   analogWrite(pin, convertRGBval(val));
+}
+
+// immediatley set the RED, GREEN, and BLUE leds to the given brightness
+void setRGB(byte r, byte g, byte b) {
+  setLED(R, r); 
+  setLED(G, g); 
+  setLED(B, b);
 }
 
 void blink(byte pin, byte times, int delayTime) {

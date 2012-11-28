@@ -17,7 +17,7 @@
   },
   "dependencies" : {
     "node-gyp" : "*",
-    "serialport" :  "*",
+    "serialport" :  "1.0.6",
     "node-xmpp" :  "*",
     "cli-color" :  "*",
     "machina" : "*"

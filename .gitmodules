@@ -1,0 +1,3 @@
+[submodule "scoreboard/sail.js"]
+	path = scoreboard/sail.js
+	url = git@github.com:educoder/sail.js.git

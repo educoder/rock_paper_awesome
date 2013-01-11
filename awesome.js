@@ -133,27 +133,10 @@ RPA.Fsm = machina.Fsm.extend({
         this.transition('WAITING_FOR_YOUR_READY');
       }
     },
-    'WAITING_FOR_YOUR_READY': {
-      ready: function () {
-        rpa.bow();
-        this.transition('READY_TO_PLAY');
-      }
-    },
-    'WAITING_FOR_THEIR_READY': {
-      remote_ready: function () {
-        this.transition('READY_TO_PLAY');
-      }
-    },
-    'READY_TO_PLAY': {
+    'WAITING_FOR_THEIR_CHOICE': {
       you_choose: function (weapon) {
         rpa.setYourWeapon(weapon);
-        this.transition('WAITING_FOR_THEIR_CHOICE');
       },
-      they_choose: function (weapon) {
-        this.transition('WAITING_FOR_YOUR_CHOICE');
-      }
-    },
-    'WAITING_FOR_THEIR_CHOICE': {
       they_choose: function(weapon) {
         this.transition('WAITING_FOR_RESULT');
       }
@@ -162,6 +145,8 @@ RPA.Fsm = machina.Fsm.extend({
       you_choose: function (weapon) {
         rpa.setYourWeapon(weapon)
         this.transition('WAITING_FOR_RESULT');
+      },
+      they_choose: function(weapon) {
       }
     },
     'WAITING_FOR_RESULT': {

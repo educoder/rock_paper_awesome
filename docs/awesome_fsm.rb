@@ -45,29 +45,18 @@ class RockPaperAwesome
     end
 
     state :ONLINE do
-      on :remote_ready, :to => :WAITING_FOR_YOUR_READY
-      on :ready, :to => :WAITING_FOR_THEIR_READY
-    end
-
-    state :WAITING_FOR_THEIR_READY do
-      on :remote_ready, :to => :READY_TO_PLAY
-    end
-
-    state :WAITING_FOR_YOUR_READY do
-      on :ready, :to => :READY_TO_PLAY
-    end
-
-    state :READY_TO_PLAY do
       on :you_choose, :to => :WAITING_FOR_THEIR_CHOICE
       on :they_choose, :to => :WAITING_FOR_YOUR_CHOICE
     end
 
     state :WAITING_FOR_THEIR_CHOICE do
       on :they_choose, :to => :WAITING_FOR_RESULT
+      on :you_choose, :to => :WAITING_FOR_THEIR_CHOICE # allow for you changing your mind
     end
 
     state :WAITING_FOR_YOUR_CHOICE do
       on :you_choose, :to => :WAITING_FOR_RESULT
+      on :they_choose, :to => :WAITING_FOR_YOUR_CHOICE # allow for them changing their mind
     end
 
     state :WAITING_FOR_RESULT do

@@ -1,0 +1,16 @@
+#player-1 {
+    position: absolute;
+    right: 50%;
+    left: 0;
+    top: 0;
+    bottom: 0;
+}
+
+#player-2 {
+    position: absolute;
+    left: 50%;
+    right: 0;
+    top: 0;
+    bottom: 0;
+}
+

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Scoreboard</title>
+    <link rel="stylesheet" href="scoreboard.css" />
+
+    <script src="sail.js/load.js"></script>
+    <script src="sail.js/sail.js"></script>
+    <script type="text/javascript">
+        Sail.JS_ROOT_PATH = "sail.js";
+        Sail.load()
+            .then('scoreboard.js')
+            .thenRun(function() { return Sail.init(new RPA.Scoreboard()); });
+    </script>
+</head>
+<body>
+    <div id="player-1">
+        <h1 class="username"></h1>
+        <div class="weapon"></div>
+        <div class="score"></div>
+    </div>
+    <div id="player-2">
+        <h1 class="username"></h1>
+        <div class="weapon"></div>
+        <div class="score"></div>
+    </div>
+</body>
+</html>

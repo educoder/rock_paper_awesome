@@ -1,0 +1,9 @@
+{
+"xmpp": {
+    "domain": "badger.encorelab.org",
+    "port": 5222,
+    "url": "ws://badger.encorelab.org:5281/",
+    "username": "rpa-scoreboard",
+    "password": "543363987abfbdf4e7c4621c89bdb53fdfe2141d"
+  }
+}

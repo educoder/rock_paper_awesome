@@ -7,46 +7,21 @@ class RPA {
 
         enum WEAPON { ROCK = 'R', PAPER = 'P', SCISSORS = 'S' };
 
-        void say_hello();
+        void signal_ready(void);
 
-        void bow();
-        void choose_ROCK();
-        void choose_PAPER();
-        void choose_SCISSORS();
+        void present(void);
+        void absent(void);
+        void choose_ROCK(void);
+        void choose_PAPER(void);
+        void choose_SCISSORS(void);
 
-        // EVENTS
-        void (*connect)();
-        void (*connected)();
-        void (*ready)();
-        void (*remote_ready)();
-        void (*you_choose)(String weapon);
-        void (*they_choose)(String weapon);
-        void (*you_win)();
-        void (*you_lose)();
-        void (*tie)();
-        void (*disconnected)();
-
-        // STATES
-        void (*OFFLINE)();
-        void (*CONNECTING)();
-        void (*ONLINE)();
-        void (*WAITING_FOR_YOUR_READY)();
-        void (*WAITING_FOR_THEIR_READY)();
-        void (*READY_TO_PLAY)();
-        void (*WAITING_FOR_YOUR_CHOICE)();
-        void (*WAITING_FOR_THEIR_CHOICE)();
-        void (*WAITING_FOR_RESULT)();
-
-        void check_input_from_serial();
+        void check_input_from_serial(void);
 
     protected:
 
         String inputBuffer;
 
         String state;
-
-        RPA::WEAPON your_weapon;
-        RPA::WEAPON their_weapon;
 
         // processes an incoming command line from Serial
         void in(String &str);
@@ -55,5 +30,16 @@ class RPA {
         void out(const char *str);
         void out(String &str);
 
-
 };
+
+// POSSIBLE EVENTS
+void when_you_are_present(void);
+void when_you_are_absent(void);
+void when_opponent_is_present(String opponentName);
+void when_opponent_is_absent(String opponentName);
+void when_you_choose_weapon(RPA::WEAPON weapon);
+void when_opponent_chooses_weapon(RPA::WEAPON weapon);
+void when_you_win(void);
+void when_you_lose(void);
+void when_tie(void);
+void when_error(void);

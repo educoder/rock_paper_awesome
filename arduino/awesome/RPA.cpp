@@ -1,16 +1,19 @@
 #include "RPA.h" 
 
-
 RPA::RPA() {
     inputBuffer = "";
 }
 
-void RPA::say_hello() {
+void RPA::signal_ready() {
     out("~");
 }
 
-void RPA::bow() {
-    out("< ready");
+void RPA::present() {
+    out("< present");
+}
+
+void RPA::absent() {
+    out("< absent");
 }
 
 void RPA::choose_ROCK() { 
@@ -45,53 +48,32 @@ void RPA::in(String &str) {
     str.toCharArray(input, 255);
     char *p = input;
     String ctrl = strtok_r(p, " ", &p);
-    String cmd = strtok_r(p, " ", &p);
+    String ev = strtok_r(p, " ", &p);
     String arg = strtok_r(p, " ", &p);
     
     if (ctrl == ">") {
         // we have an incoming event
-        if (cmd == "connect" && *connect)
-            connect();
-        else if (cmd == "connected" && *connected)
-            connected();
-        else if (cmd == "remote_ready" && *remote_ready)
-            remote_ready();
-        else if (cmd == "ready" && *ready)
-            ready();
-        else if (cmd == "you_choose" && *you_choose)
-            you_choose(arg);
-        else if (cmd == "they_choose" && *they_choose)
-            they_choose(arg);
-        else if (cmd == "you_win" && *you_win)
-            you_win();
-        else if (cmd == "you_lose" && *you_lose)
-            you_lose();
-        else if (cmd == "tie" && *tie)
-            tie();
-        else if (cmd == "disconnected" && *disconnected)
-            disconnected();
-
-    } else if (ctrl == "=") {
-        // we have an incoming state update
-        if (cmd == "OFFLINE" && *OFFLINE)
-            OFFLINE();
-        else if (cmd == "CONNECTING" && *CONNECTING)
-            CONNECTING();
-        else if (cmd == "ONLINE" && *ONLINE)
-            ONLINE();
-        else if (cmd == "WAITING_FOR_YOUR_READY" && *WAITING_FOR_YOUR_READY)
-            WAITING_FOR_YOUR_READY();
-        else if (cmd == "WAITING_FOR_THEIR_READY" && *WAITING_FOR_THEIR_READY)
-            WAITING_FOR_THEIR_READY();
-        else if (cmd == "READY_TO_PLAY" && *READY_TO_PLAY)
-            READY_TO_PLAY();
-        else if (cmd == "WAITING_FOR_THEIR_CHOICE" && *WAITING_FOR_THEIR_CHOICE)
-            WAITING_FOR_THEIR_CHOICE();
-        else if (cmd == "WAITING_FOR_YOUR_CHOICE" && *WAITING_FOR_YOUR_CHOICE)
-            WAITING_FOR_YOUR_CHOICE();
-        else if (cmd == "WAITING_FOR_RESULT" && *WAITING_FOR_RESULT)
-            WAITING_FOR_RESULT();
-
+        if (ev == "you_are_present") {
+            when_you_are_present();
+        } else if (ev == "you_are_absent") {
+            when_you_are_absent();
+        } else if (ev == "opponent_is_present") {
+            when_opponent_is_present(arg); // arg is the name/id of the opponent
+        } else if (ev == "opponent_is_absent") {
+            when_opponent_is_absent(arg); // arg is the name/id of the opponent
+        } else if (ev == "you_choose_weapon") {
+            when_you_choose_weapon((RPA::WEAPON) arg[0]); // arg is the weapon
+        } else if (ev == "opponent_chooses_weapon") {
+            when_opponent_chooses_weapon((RPA::WEAPON) arg[0]); // arg is the weapon
+        } else if (ev == "you_win") {
+            when_you_win();
+        } else if (ev == "you_lose") {
+            when_you_lose();
+        } else if (ev == "tie") {
+            when_tie();
+        } else if (ev == "error") {
+            when_error();
+        }
     }
 
     p = NULL;

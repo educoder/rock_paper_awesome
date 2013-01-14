@@ -20,7 +20,8 @@
     "serialport" :  "1.0.6",
     "node-xmpp" :  "*",
     "cli-color" :  "*",
-    "machina" : "*"
+    "machina" : "*",
+    "eventemitter2": "*"
   },
   "analyze": false,
   "devDependencies": {

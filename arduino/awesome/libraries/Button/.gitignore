@@ -1,8 +1,0 @@
-bin
-build
-include
-lib
-share
-*.pyc
-.DS_Store
-.svn

@@ -7,17 +7,21 @@ See the [Awesome Assembly Instructions](https://github.com/educoder/rock_paper_a
 
 ### The Arduino part:
 
-1. `cd arduino/awesome`
-2. `cp awesome.example.ino awesome.ino`
-3. Open the sketch in the Arduino IDE
-4. Customize to your heart's desire
+1. `cd {YOUR ARDUINO DIRECTORY}`
+    * See http://arduino.cc/en/Guide/Libraries if you don't know where to find your Arduino directory.
+2. `git clone git@github.com:educoder/rock_paper_arduino.git RockPaperAwesome`
+3. Open the Arduino IDE
+4. File ➜ Examples ➜ RockPaperAwesome ➜ awesome_leds
+5. Customize to your heart's desire
+6. Compile and upload to your Arduino
 
 ### The node.js part:
 
-1. `cd` to the root directory, where `awesome.js` is located
-2. `npm install` to install all necessary dependencies
-3. Make sure you have a user account set up on your XMPP server.
-4. Run `node awesome.js USERNAME PASSWORD XMPPHOST`,
+1. `cd ~` (or wherever you want to clone the git repo)
+2. `git clone git@github.com:educoder/rock_paper_nodejs.git`
+3. `npm install` to install all necessary dependencies
+4. Make sure you have a user account set up on your XMPP server.
+5. Run `node awesome.js USERNAME PASSWORD XMPPHOST`,
    where `USERNAME` and `PASSWORD` is your XMPP username and password, and `XMPPHOST` is the hostname of your XMPP server.
    For example: `node awesome.js batman gotham badger.encorelab.org`
 

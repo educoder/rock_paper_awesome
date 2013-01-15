@@ -7,6 +7,8 @@ See the [Awesome Assembly Instructions](https://github.com/educoder/rock_paper_a
 
 ### The Arduino part:
 
+Install the RPA Arduino library:
+
 1. `cd {YOUR ARDUINO DIRECTORY}`
     * See http://arduino.cc/en/Guide/Libraries if you don't know where to find your Arduino directory.
 2. `git clone git@github.com:educoder/rock_paper_arduino.git RockPaperAwesome`

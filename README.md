@@ -12,7 +12,7 @@ See the [Awesome Assembly Instructions](https://github.com/educoder/rock_paper_a
 2. `git clone git@github.com:educoder/rock_paper_arduino.git RockPaperAwesome`
 3. Open the Arduino IDE
 4. File ➜ Examples ➜ RockPaperAwesome ➜ awesome_leds
-5. Customize the exmaple sketch to your heart's desire
+5. Customize the example sketch to your heart's desire
 6. Compile and upload to your Arduino
 
 ### The node.js part:

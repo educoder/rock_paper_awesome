@@ -1,0 +1,6 @@
+[submodule "arduino"]
+	path = arduino
+	url = git://github.com/educoder/rock_paper_arduino.git
+[submodule "nodejs"]
+	path = nodejs
+	url = git://github.com/educoder/rock_paper_nodejs.git

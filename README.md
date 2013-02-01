@@ -1,6 +1,10 @@
 Rock Paper Awesome
 ==================
 
+# Promo video
+Also watch this awesome [promo video](http://vimeo.com/51831359) by the wonderful [Alisa Acosta](http://encorelab.org/people/alisa-acosta/)
+that explains why we started this project.
+
 # Quickstart
 
 See the [Awesome Assembly Instructions](https://github.com/educoder/rock_paper_awesome/blob/master/docs/Awesome%20Assembly%20Instructions.pdf?raw=true) for a detailed setup and customization guide.
